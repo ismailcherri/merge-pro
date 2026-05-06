@@ -36,8 +36,9 @@ if (typeof document !== 'undefined') {
 }
 
 export function ThreePaneEditor({ oursText, baseText, theirsText, chunks, fileName, language, onChunkResolved, onSave }: Props) {
-  const leftRef  = useRef<EditorPaneHandle>(null);
-  const rightRef = useRef<EditorPaneHandle>(null);
+  const leftRef   = useRef<EditorPaneHandle>(null);
+  const centerRef = useRef<EditorPaneHandle>(null);
+  const rightRef  = useRef<EditorPaneHandle>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [editorHeight, setEditorHeight] = useState(600);
   const [currentConflictIdx, setCurrentConflictIdx] = useState(0);
@@ -65,6 +66,7 @@ export function ThreePaneEditor({ oursText, baseText, theirsText, chunks, fileNa
   const handleScroll = useCallback((e: monaco.IScrollEvent) => {
     setScrollTop(e.scrollTop);
     leftRef.current?.getEditor()?.setScrollTop(e.scrollTop);
+    centerRef.current?.getEditor()?.setScrollTop(e.scrollTop);
     rightRef.current?.getEditor()?.setScrollTop(e.scrollTop);
   }, []);
 
@@ -91,9 +93,9 @@ export function ThreePaneEditor({ oursText, baseText, theirsText, chunks, fileNa
     }
   };
 
-  const acceptAllOurs   = () => chunks.forEach((_, i) => onChunkResolved(i, 'ours'));
-  const acceptAllTheirs = () => chunks.forEach((_, i) => onChunkResolved(i, 'theirs'));
-  const autoResolve     = () => chunks.filter((c) => c.type === 'non-conflicting').forEach((_, i) => onChunkResolved(i, 'ours'));
+  const acceptAllOurs   = () => chunks.forEach((c, i) => { if (c.type === 'conflict' && c.resolvedWith === undefined) onChunkResolved(i, 'ours'); });
+  const acceptAllTheirs = () => chunks.forEach((c, i) => { if (c.type === 'conflict' && c.resolvedWith === undefined) onChunkResolved(i, 'theirs'); });
+  const autoResolve     = () => chunks.forEach((c, i) => { if (c.type === 'non-conflicting') onChunkResolved(i, 'ours'); });
 
   return (
     <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -132,13 +134,14 @@ export function ThreePaneEditor({ oursText, baseText, theirsText, chunks, fileNa
         <GutterConnector
           chunks={chunks}
           leftGetTop={getTop(leftRef.current?.getEditor() ?? null)}
-          rightGetTop={getTop(null)}
+          rightGetTop={getTop(centerRef.current?.getEditor() ?? null)}
           height={editorHeight}
           width={GUTTER_WIDTH}
           scrollTop={scrollTop}
         />
 
         <EditorPane
+          ref={centerRef}
           value={resultText}
           language={language}
           readOnly={false}
@@ -148,7 +151,7 @@ export function ThreePaneEditor({ oursText, baseText, theirsText, chunks, fileNa
 
         <GutterConnector
           chunks={chunks}
-          leftGetTop={getTop(null)}
+          leftGetTop={getTop(centerRef.current?.getEditor() ?? null)}
           rightGetTop={getTop(rightRef.current?.getEditor() ?? null)}
           height={editorHeight}
           width={GUTTER_WIDTH}
