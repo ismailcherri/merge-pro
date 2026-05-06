@@ -34,6 +34,12 @@ export class MergePanelProvider implements vscode.WebviewViewProvider, vscode.Di
 
     // Push current state immediately
     this.postState(this.session.getSessionState());
+
+    // Push initial state once the webview is ready
+    setTimeout(() => {
+      const state = this.session.getSessionState();
+      this.postState(state);
+    }, 100);
   }
 
   private buildWebviewState(activeEditorUri?: string): WebviewSessionState {

@@ -62,9 +62,19 @@ export class MergeEditorProvider implements vscode.Disposable {
         this.sendChunkUpdate(panel, uri);
       } else if (msg.type === 'saveFile') {
         try {
+          const hasUnresolved = msg.content.includes('<<<<<<<');
+          if (hasUnresolved) {
+            const choice = await vscode.window.showWarningMessage(
+              'MergePro: File still contains unresolved conflict markers. Save anyway?',
+              'Save', 'Cancel',
+            );
+            if (choice !== 'Save') return;
+          }
           const bytes = Buffer.from(msg.content, 'utf8');
           await vscode.workspace.fs.writeFile(uri, bytes);
-          vscode.window.showInformationMessage(`MergePro: Saved ${vscode.workspace.asRelativePath(uri)}`);
+          if (!hasUnresolved) {
+            vscode.window.showInformationMessage(`MergePro: Saved ${vscode.workspace.asRelativePath(uri)}`);
+          }
         } catch (err) {
           vscode.window.showErrorMessage(`MergePro: Failed to save — ${String(err)}`);
         }

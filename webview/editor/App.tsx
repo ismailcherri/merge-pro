@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { Component, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { ThreePaneEditor } from './ThreePaneEditor';
 import type { ConflictChunk } from '../../src/protocol';
 import type { HostToEditor, EditorToHost } from '../../src/protocol';
@@ -19,6 +20,22 @@ function detectLanguage(fileName: string): string {
   const ext = fileName.split('.').pop() ?? '';
   const map: Record<string, string> = { ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript', json: 'json', md: 'markdown', py: 'python' };
   return map[ext] ?? 'plaintext';
+}
+
+export class ErrorBoundary extends Component<{ children: ReactNode }, { error: boolean }> {
+  state = { error: false };
+  static getDerivedStateFromError() { return { error: true }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 20 }}>
+          <p>MergePro editor failed to load.</p>
+          <button onClick={() => vscode.postMessage({ type: 'ready' })}>Retry</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export function App() {
