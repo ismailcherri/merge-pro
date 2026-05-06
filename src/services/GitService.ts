@@ -29,7 +29,8 @@ export class GitService implements vscode.Disposable {
   readonly onDidMergeStateChange = this._onDidMergeStateChange.event;
 
   private gitAPI: GitAPI | undefined;
-  private repoDisposable: vscode.Disposable | undefined;
+  private readonly repoDisposables = new Map<string, vscode.Disposable>();
+  private initing = false;
   private readonly disposables: vscode.Disposable[] = [];
 
   constructor() {
@@ -38,18 +39,26 @@ export class GitService implements vscode.Disposable {
   }
 
   private init(): void {
+    if (this.initing) return;
+    this.initing = true;
+
     const ext = vscode.extensions.getExtension<GitExtensionAPI>('vscode.git');
     if (!ext) {
       vscode.window.showWarningMessage('MergePro: Git extension not found.');
+      this.initing = false;
       return;
     }
-    const activate = ext.isActive
+    const activate: Promise<GitExtensionAPI> = ext.isActive
       ? Promise.resolve(ext.exports)
-      : ext.activate();
+      : Promise.resolve(ext.activate());
 
     activate.then((exports) => {
       this.gitAPI = exports.getAPI(1);
+      this.initing = false;
       this.watchRepositories();
+    }).catch((err) => {
+      this.initing = false;
+      vscode.window.showWarningMessage(`MergePro: Failed to activate Git extension. ${err}`);
     });
 
     // Re-try if git extension activates later
@@ -73,11 +82,13 @@ export class GitService implements vscode.Disposable {
   }
 
   private watchRepo(repo: Repository): void {
-    this.repoDisposable?.dispose();
-    this.repoDisposable = repo.state.onDidChange(() => {
+    const key = repo.rootUri.toString();
+    this.repoDisposables.get(key)?.dispose();
+    const disposable = repo.state.onDidChange(() => {
       this._onDidMergeStateChange.fire(this.toMergeChanges(repo));
     });
-    this.disposables.push(this.repoDisposable);
+    this.repoDisposables.set(key, disposable);
+    this.disposables.push(disposable);
     // Fire immediately to populate initial state
     this._onDidMergeStateChange.fire(this.toMergeChanges(repo));
   }
@@ -107,6 +118,8 @@ export class GitService implements vscode.Disposable {
   }
 
   dispose(): void {
+    this.repoDisposables.forEach((d) => d.dispose());
+    this.repoDisposables.clear();
     this.disposables.forEach((d) => d.dispose());
   }
 }
