@@ -1,6 +1,7 @@
 {
   "name": "merge-pro",
   "displayName": "MergePro",
+  "publisher": "merge-pro-publisher",
   "description": "IntelliJ-style three-pane merge conflict resolver",
   "version": "0.1.0",
   "engines": {
@@ -60,7 +61,7 @@
   "scripts": {
     "vscode:prepublish": "npm run build",
     "build": "tsc -p tsconfig.json && webpack --config webpack.webview.config.js --mode production",
-    "build:ext": "tsc -p tsconfig.json",
+    "build:ext": "tsc -p tsconfig.json && tsc -p tsconfig.integration.json",
     "build:webview": "webpack --config webpack.webview.config.js --mode development",
     "watch:ext": "tsc -watch -p tsconfig.json",
     "watch:webview": "webpack --watch --config webpack.webview.config.js --mode development",
@@ -74,6 +75,8 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/diff": "^7.0.2",
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
@@ -87,7 +90,9 @@
     "css-loader": "^7.1.4",
     "eslint": "^8.0.0",
     "file-loader": "^6.2.0",
+    "glob": "^13.0.6",
     "jsdom": "^23.0.0",
+    "mocha": "^11.7.5",
     "monaco-editor-webpack-plugin": "^7.1.0",
     "style-loader": "^4.0.0",
     "ts-loader": "^9.5.0",
