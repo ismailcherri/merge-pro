@@ -98,14 +98,25 @@ describe('ConflictParser.parse', () => {
     const base = join('a', 'b', 'c');
     const both = join('a', 'NEW', 'c');
     const chunks = parse(both, base, both);
-    // Both sides agree — no conflict
-    expect(chunks.every(c => c.type !== 'conflict')).toBe(true);
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0].type).toBe('non-conflicting');
+    expect(chunks[0].oursLines).toEqual(['NEW']);
+    expect(chunks[0].theirsLines).toEqual(['NEW']);
   });
 
   it('returns no conflict when both sides delete all content', () => {
     const base = join('a', 'b', 'c');
     const chunks = parse('', base, '');
-    expect(chunks.every(c => c.type !== 'conflict')).toBe(true);
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0].type).toBe('non-conflicting');
+    expect(chunks[0].oursLines).toEqual([]);
+    expect(chunks[0].theirsLines).toEqual([]);
+  });
+
+  it('handles trailing CRLF without spurious chunks', () => {
+    // All three versions identical except trailing CRLF — should produce no chunks
+    const text = 'a\r\nb\r\nc\r\n';
+    expect(parse(text, text, text)).toEqual([]);
   });
 
   it('returns chunks sorted by baseStartLine', () => {
