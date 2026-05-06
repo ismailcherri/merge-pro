@@ -4,6 +4,8 @@ export interface ConflictChunk {
   type: 'non-conflicting' | 'conflict';
   /** Lines from the ours version in this region */
   oursLines: string[];
+  /** Lines from the base (common ancestor) version in this region */
+  baseLines: string[];
   /** Lines from the theirs version in this region */
   theirsLines: string[];
   /** 0-indexed start line in base (inclusive) */

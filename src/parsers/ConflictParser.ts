@@ -92,6 +92,7 @@ export function parse(
         chunks.push({
           type: 'non-conflicting',
           oursLines: ours.newLines,
+          baseLines: baseLines.slice(Math.min(ours.baseStart, theirs.baseStart), Math.max(ours.baseEnd, theirs.baseEnd)),
           theirsLines: theirs.newLines,
           baseStartLine: Math.min(ours.baseStart, theirs.baseStart),
           baseEndLine: Math.max(ours.baseEnd, theirs.baseEnd),
@@ -101,6 +102,7 @@ export function parse(
         chunks.push({
           type: 'conflict',
           oursLines: ours.newLines,
+          baseLines: baseLines.slice(Math.min(ours.baseStart, theirs.baseStart), Math.max(ours.baseEnd, theirs.baseEnd)),
           theirsLines: theirs.newLines,
           baseStartLine: Math.min(ours.baseStart, theirs.baseStart),
           baseEndLine: Math.max(ours.baseEnd, theirs.baseEnd),
@@ -110,6 +112,7 @@ export function parse(
       chunks.push({
         type: 'non-conflicting',
         oursLines: ours.newLines,
+	        baseLines: baseLines.slice(ours.baseStart, ours.baseEnd),
         theirsLines: baseLines.slice(ours.baseStart, ours.baseEnd),
         baseStartLine: ours.baseStart,
         baseEndLine: ours.baseEnd,
@@ -124,6 +127,7 @@ export function parse(
     chunks.push({
       type: 'non-conflicting',
       oursLines: baseLines.slice(theirs.baseStart, theirs.baseEnd),
+      baseLines: baseLines.slice(theirs.baseStart, theirs.baseEnd),
       theirsLines: theirs.newLines,
       baseStartLine: theirs.baseStart,
       baseEndLine: theirs.baseEnd,
