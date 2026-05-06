@@ -94,6 +94,20 @@ describe('ConflictParser.parse', () => {
     expect(parse('', '', '')).toEqual([]);
   });
 
+  it('treats identical changes on both sides as non-conflicting', () => {
+    const base = join('a', 'b', 'c');
+    const both = join('a', 'NEW', 'c');
+    const chunks = parse(both, base, both);
+    // Both sides agree — no conflict
+    expect(chunks.every(c => c.type !== 'conflict')).toBe(true);
+  });
+
+  it('returns no conflict when both sides delete all content', () => {
+    const base = join('a', 'b', 'c');
+    const chunks = parse('', base, '');
+    expect(chunks.every(c => c.type !== 'conflict')).toBe(true);
+  });
+
   it('returns chunks sorted by baseStartLine', () => {
     const base = join('a', 'b', 'c', 'd');
     const ours = join('OURS_A', 'b', 'c', 'OURS_D');

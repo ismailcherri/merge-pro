@@ -8,6 +8,10 @@ interface Hunk {
   side: 'ours' | 'theirs';
 }
 
+function arraysEqual(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
 function splitLines(text: string): string[] {
   // Normalize CRLF, then split
   const lines = text.replace(/\r\n/g, '\n').split('\n');
@@ -17,8 +21,8 @@ function splitLines(text: string): string[] {
 }
 
 function extractHunks(baseText: string, changedText: string, side: 'ours' | 'theirs'): Hunk[] {
-  const normalBase = baseText.replace(/\r\n/g, '\n');
-  const normalChanged = changedText.replace(/\r\n/g, '\n');
+  const normalBase = baseText.replace(/\r\n/g, '\n').replace(/\n$/, '');
+  const normalChanged = changedText.replace(/\r\n/g, '\n').replace(/\n$/, '');
   const changes = diffLines(normalBase, normalChanged);
   const hunks: Hunk[] = [];
   let basePos = 0;
@@ -82,13 +86,25 @@ export function parse(
     if (conflictingTheirsIdx !== -1) {
       const theirs = theirsHunks[conflictingTheirsIdx];
       usedTheirs.add(conflictingTheirsIdx);
-      chunks.push({
-        type: 'conflict',
-        oursLines: ours.newLines,
-        theirsLines: theirs.newLines,
-        baseStartLine: Math.min(ours.baseStart, theirs.baseStart),
-        baseEndLine: Math.max(ours.baseEnd, theirs.baseEnd),
-      });
+
+      // Both sides agree on the same output — not a real conflict
+      if (arraysEqual(ours.newLines, theirs.newLines)) {
+        chunks.push({
+          type: 'non-conflicting',
+          oursLines: ours.newLines,
+          theirsLines: theirs.newLines,
+          baseStartLine: Math.min(ours.baseStart, theirs.baseStart),
+          baseEndLine: Math.max(ours.baseEnd, theirs.baseEnd),
+        });
+      } else {
+        chunks.push({
+          type: 'conflict',
+          oursLines: ours.newLines,
+          theirsLines: theirs.newLines,
+          baseStartLine: Math.min(ours.baseStart, theirs.baseStart),
+          baseEndLine: Math.max(ours.baseEnd, theirs.baseEnd),
+        });
+      }
     } else {
       chunks.push({
         type: 'non-conflicting',
