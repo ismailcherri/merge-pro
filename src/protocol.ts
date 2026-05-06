@@ -14,6 +14,8 @@ export interface ConflictChunk {
   resolvedWith?: 'ours' | 'theirs' | 'manual';
   /** Only set when resolvedWith === 'manual' */
   manualLines?: string[];
+  /** For non-conflicting chunks: which side's content should be used as the resolution. */
+  winner?: 'ours' | 'theirs';
 }
 
 // Webview-safe state (vscode.Uri serialized as strings)

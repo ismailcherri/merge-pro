@@ -95,6 +95,7 @@ export function parse(
           theirsLines: theirs.newLines,
           baseStartLine: Math.min(ours.baseStart, theirs.baseStart),
           baseEndLine: Math.max(ours.baseEnd, theirs.baseEnd),
+          winner: 'ours',
         });
       } else {
         chunks.push({
@@ -112,6 +113,7 @@ export function parse(
         theirsLines: baseLines.slice(ours.baseStart, ours.baseEnd),
         baseStartLine: ours.baseStart,
         baseEndLine: ours.baseEnd,
+        winner: 'ours',
       });
     }
   }
@@ -125,6 +127,7 @@ export function parse(
       theirsLines: theirs.newLines,
       baseStartLine: theirs.baseStart,
       baseEndLine: theirs.baseEnd,
+      winner: 'theirs',
     });
   });
 

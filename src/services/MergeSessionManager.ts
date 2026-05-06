@@ -110,7 +110,7 @@ export class MergeSessionManager implements vscode.Disposable {
     if (!state) return;
     state.chunks = state.chunks.map((chunk) => {
       if (chunk.type === 'non-conflicting' && chunk.resolvedWith === undefined) {
-        const side = chunk.oursLines.length > 0 ? 'ours' : 'theirs';
+        const side: 'ours' | 'theirs' = chunk.winner ?? 'ours';
         return { ...chunk, resolvedWith: side };
       }
       return chunk;
