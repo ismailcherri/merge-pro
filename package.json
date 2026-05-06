@@ -64,7 +64,7 @@
     "build:webview": "webpack --config webpack.webview.config.js --mode development",
     "watch:ext": "tsc -watch -p tsconfig.json",
     "watch:webview": "webpack --watch --config webpack.webview.config.js --mode development",
-    "test": "vitest run",
+    "test": "vitest run && vitest run --config vitest.webview.config.ts",
     "test:watch": "vitest",
     "test:integration": "node ./out/test/integration/runTests.js",
     "lint": "eslint src webview --ext ts,tsx"

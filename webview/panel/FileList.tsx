@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { FileItem } from './FileItem';
-import type { WebviewFileState } from './types';
+import type { WebviewFileState } from '../../src/protocol';
 
 interface Props {
   files: WebviewFileState[];

@@ -1,5 +1,7 @@
+import type { PanelToHost } from '../../src/protocol';
+
 declare function acquireVsCodeApi(): {
-  postMessage: (msg: unknown) => void;
+  postMessage: (msg: PanelToHost) => void;
   getState: () => unknown;
   setState: (state: unknown) => void;
 };

@@ -4,7 +4,7 @@ interface Props {
 }
 
 export function SessionHeader({ total, resolved }: Props) {
-  const pct = total === 0 ? 100 : Math.round((resolved / total) * 100);
+  const pct = total === 0 ? 0 : Math.round((resolved / total) * 100);
   const allDone = resolved === total && total > 0;
 
   return (

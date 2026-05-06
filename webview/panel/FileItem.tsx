@@ -1,4 +1,4 @@
-import type { WebviewFileState } from './types';
+import type { WebviewFileState } from '../../src/protocol';
 
 interface Props {
   file: WebviewFileState;
@@ -19,6 +19,7 @@ export function FileItem({ file, onResolve, isActive }: Props) {
       borderLeft: isActive ? '2px solid var(--vscode-focusBorder)' : '2px solid transparent',
       background: isActive ? 'var(--vscode-list-activeSelectionBackground, rgba(0,122,204,0.1))' : undefined,
       opacity: isResolved ? 0.5 : 1,
+      position: 'relative',
     }}>
       <span style={{ fontSize: 13, color: isResolved ? 'var(--vscode-testing-iconPassed)' : 'var(--vscode-problemsWarningIcon-foreground)' }}>
         {isResolved ? '✓' : '●'}
@@ -33,6 +34,7 @@ export function FileItem({ file, onResolve, isActive }: Props) {
           </span>
           <button
             onClick={() => onResolve(file.uri)}
+            disabled={isActive}
             style={{ fontSize: 10, padding: '2px 8px', cursor: 'pointer', background: 'var(--vscode-button-secondaryBackground)', color: 'var(--vscode-button-secondaryForeground)', border: 'none', borderRadius: 3 }}>
             {isActive ? 'Editing' : 'Resolve'}
           </button>

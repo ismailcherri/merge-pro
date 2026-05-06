@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { SessionHeader } from './SessionHeader';
 import { BatchActionsBar } from './BatchActionsBar';
 import { FileList } from './FileList';
-import type { WebviewSessionState } from './types';
+import type { WebviewSessionState } from '../../src/protocol';
 import vscode from './vscode';
 
 export function App() {
@@ -10,8 +10,10 @@ export function App() {
 
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      const msg = e.data as { type: string; state?: WebviewSessionState };
-      if (msg.type === 'stateUpdate' && msg.state) setState(msg.state);
+      const msg = e.data as { type?: string; state?: WebviewSessionState };
+      if (msg.type === 'stateUpdate' && msg.state != null && Array.isArray(msg.state.files)) {
+        setState(msg.state);
+      }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
