@@ -10,7 +10,8 @@
       "Bash(npx tsx *)",
       "Bash(npm run *)",
       "Bash(npx vitest *)",
-      "Bash(npx vsce *)"
+      "Bash(npx vsce *)",
+      "Bash(npm uninstall *)"
     ]
   }
 }
