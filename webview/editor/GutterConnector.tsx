@@ -33,9 +33,9 @@ export function GutterConnector({ chunks, leftGetTop, rightGetTop, height, width
       // Points: top-left, bottom-left, bottom-right, top-right
       const points = `0,${leftTop} 0,${leftBottom} ${width},${rightBottom} ${width},${rightTop}`;
 
-      return <polygon key={i} points={points} fill={fill} stroke={stroke} strokeWidth={1} />;
+      return <polygon key={`${chunk.baseStartLine}-${chunk.baseEndLine}`} points={points} fill={fill} stroke={stroke} strokeWidth={1} />;
     });
-  }, [chunks, leftGetTop, rightGetTop, height, width, scrollTop]);
+  }, [chunks, leftGetTop, rightGetTop, width, scrollTop]);
 
   return (
     <svg
