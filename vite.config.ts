@@ -19,6 +19,9 @@ export default defineConfig({
       },
       output: {
         entryFileNames: '[name].js',
+        // ES module output with shared chunks for smaller bundles.
+        // Webview HTML uses <script type="module"> to support this.
+        chunkFileNames: 'assets/[name]-[hash].js',
       },
     },
   },
