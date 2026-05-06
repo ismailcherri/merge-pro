@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     monacoEditorPlugin({
-      languageWorkers: [],
+      languageWorkers: ['json'],
     }),
   ],
   build: {

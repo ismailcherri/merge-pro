@@ -140,7 +140,7 @@ export function ThreePaneEditor({ oursText, baseText, theirsText, chunks, fileNa
 
       {/* Three-pane editors */}
       <div style={{ display: 'flex', overflow: 'hidden', height: topEditorHeight, flexShrink: 0 }}>
-        <div style={{ width: PANE_WIDTH, height: '100%', overflow: 'hidden', flexShrink: 0 }}>
+        <div id="merge-pane-ours" style={{ width: PANE_WIDTH, height: '100%', overflow: 'hidden', flexShrink: 0 }}>
           <EditorPane
             ref={leftRef}
             value={displayDocs.ours}
@@ -159,7 +159,7 @@ export function ThreePaneEditor({ oursText, baseText, theirsText, chunks, fileNa
           scrollTop={scrollTop}
           onAcceptOurs={(i) => handleAccept(i, 'ours')}
         />
-        <div style={{ width: PANE_WIDTH, height: '100%', overflow: 'hidden', flexShrink: 0 }}>
+        <div id="merge-pane-base" style={{ width: PANE_WIDTH, height: '100%', overflow: 'hidden', flexShrink: 0 }}>
           <EditorPane
             ref={centerRef}
             value={displayDocs.base}
@@ -178,7 +178,7 @@ export function ThreePaneEditor({ oursText, baseText, theirsText, chunks, fileNa
           scrollTop={scrollTop}
           onAcceptTheirs={(i) => handleAccept(i, 'theirs')}
         />
-        <div style={{ width: PANE_WIDTH, height: '100%', overflow: 'hidden', flexShrink: 0 }}>
+        <div id="merge-pane-theirs" style={{ width: PANE_WIDTH, height: '100%', overflow: 'hidden', flexShrink: 0 }}>
           <EditorPane
             ref={rightRef}
             value={displayDocs.theirs}
@@ -199,7 +199,7 @@ export function ThreePaneEditor({ oursText, baseText, theirsText, chunks, fileNa
       </div>
 
       {/* Result editor */}
-      <div style={{ flex: 1, minHeight: 0 }}>
+      <div id="merge-pane-result" style={{ flex: 1, minHeight: 0 }}>
         <EditorPane
           ref={resultRef}
           value={resultText}
