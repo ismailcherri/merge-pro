@@ -4,7 +4,10 @@ src/**
 webview/**
 test/**
 test-fixtures/**
+docs/**
+.superpowers/**
 .gitignore
 tsconfig*.json
 webpack.webview.config.js
+package-lock.json
 **/*.map

@@ -3,10 +3,21 @@
   "displayName": "MergePro",
   "description": "IntelliJ-style three-pane merge conflict resolver",
   "version": "0.1.0",
-  "engines": { "vscode": "^1.85.0" },
-  "categories": ["Other"],
-  "keywords": ["git", "merge", "conflict", "diff"],
-  "activationEvents": ["onStartupFinished"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "git",
+    "merge",
+    "conflict",
+    "diff"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "views": {
@@ -20,13 +31,30 @@
       ]
     },
     "commands": [
-      { "command": "mergePro.openEditor", "title": "MergePro: Open Merge Editor" },
-      { "command": "mergePro.prevConflict", "title": "MergePro: Previous Conflict" },
-      { "command": "mergePro.nextConflict", "title": "MergePro: Next Conflict" }
+      {
+        "command": "mergePro.openEditor",
+        "title": "MergePro: Open Merge Editor"
+      },
+      {
+        "command": "mergePro.prevConflict",
+        "title": "MergePro: Previous Conflict"
+      },
+      {
+        "command": "mergePro.nextConflict",
+        "title": "MergePro: Next Conflict"
+      }
     ],
     "keybindings": [
-      { "command": "mergePro.prevConflict", "key": "alt+up", "when": "mergePro.editorActive" },
-      { "command": "mergePro.nextConflict", "key": "alt+down", "when": "mergePro.editorActive" }
+      {
+        "command": "mergePro.prevConflict",
+        "key": "alt+up",
+        "when": "mergePro.editorActive"
+      },
+      {
+        "command": "mergePro.nextConflict",
+        "key": "alt+down",
+        "when": "mergePro.editorActive"
+      }
     ]
   },
   "scripts": {
@@ -42,15 +70,16 @@
     "lint": "eslint src webview --ext ts,tsx"
   },
   "devDependencies": {
+    "@types/diff": "^7.0.2",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
+    "@vitest/coverage-v8": "^1.0.0",
     "@vscode/test-electron": "^2.3.0",
     "@vscode/vsce": "^2.22.0",
-    "@vitest/coverage-v8": "^1.0.0",
     "eslint": "^8.0.0",
     "jsdom": "^23.0.0",
     "monaco-editor-webpack-plugin": "^7.1.0",
