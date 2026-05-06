@@ -19,8 +19,13 @@ export function activate(context: vscode.ExtensionContext): void {
         const uri = vscode.Uri.parse(msg.uri);
         await editor.openEditor(uri);
         panel.setActiveEditorUri(msg.uri);
+      } else if (msg.type === 'batchAccept') {
+        const uri = vscode.Uri.parse(msg.uri);
+        session.batchAccept(uri, msg.side);
+      } else if (msg.type === 'autoResolve') {
+        const uri = vscode.Uri.parse(msg.uri);
+        session.autoResolveNonConflicting(uri);
       }
-      // batchAccept and autoResolve wired in Task 15
     }),
 
     vscode.commands.registerCommand('mergePro.openEditor', async () => {

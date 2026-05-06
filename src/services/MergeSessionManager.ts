@@ -93,6 +93,32 @@ export class MergeSessionManager implements vscode.Disposable {
     this._onDidSessionUpdate.fire(this.getSessionState());
   }
 
+  batchAccept(uri: vscode.Uri, side: 'ours' | 'theirs'): void {
+    const state = this.fileStates.get(uri.toString());
+    if (!state) return;
+    state.chunks = state.chunks.map((chunk) =>
+      chunk.type === 'conflict' && chunk.resolvedWith === undefined
+        ? { ...chunk, resolvedWith: side }
+        : chunk
+    );
+    state.resolvedChunks = state.chunks.filter((c) => c.resolvedWith !== undefined).length;
+    this._onDidSessionUpdate.fire(this.getSessionState());
+  }
+
+  autoResolveNonConflicting(uri: vscode.Uri): void {
+    const state = this.fileStates.get(uri.toString());
+    if (!state) return;
+    state.chunks = state.chunks.map((chunk) => {
+      if (chunk.type === 'non-conflicting' && chunk.resolvedWith === undefined) {
+        const side = chunk.oursLines.length > 0 ? 'ours' : 'theirs';
+        return { ...chunk, resolvedWith: side };
+      }
+      return chunk;
+    });
+    state.resolvedChunks = state.chunks.filter((c) => c.resolvedWith !== undefined).length;
+    this._onDidSessionUpdate.fire(this.getSessionState());
+  }
+
   getChunks(uri: vscode.Uri): ConflictChunk[] {
     return this.fileStates.get(uri.toString())?.chunks ?? [];
   }
