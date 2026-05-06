@@ -77,25 +77,42 @@ Each sprint is independently deliverable and reviewable. Later sprints depend on
 **Deliverables:**
 
 - `GitService.ts` — wraps `vscode.git` extension API. Exposes:
-  - `getMergeChanges(): MergeChange[]` — current list of conflicted files
-  - `onDidMergeStateChange: Event<MergeChange[]>` — fires on every state update
-  - `getFileContents(uri, stage: 1|2|3): Promise<string>` — retrieves base/ours/theirs via git index URI scheme
+    - `getMergeChanges(): MergeChange[]` — current list of conflicted files
+    - `onDidMergeStateChange: Event<MergeChange[]>` — fires on every state update
+    - `getFileContents(uri, stage: 1|2|3): Promise<string>` — retrieves base/ours/theirs via git index URI scheme
 - `ConflictParser.ts` — pure function, no VSCode dependencies:
-  - `parse(oursText: string, baseText: string, theirsText: string): ConflictChunk[]`
-  - Requires all three versions because distinguishing non-conflicting (green) chunks from true conflict (brown) chunks requires diffing each side against base independently — the working tree conflict markers alone only reveal true conflicts.
-  - Each `ConflictChunk` has: `type: 'non-conflicting' | 'conflict'`, `oursLines`, `theirsLines`, `baseStartLine`, `baseEndLine`, `resolved: boolean`
+    - `parse(oursText: string, baseText: string, theirsText: string): ConflictChunk[]`
+    - Requires all three versions because distinguishing non-conflicting (green) chunks from true conflict (brown) chunks requires diffing each side against base independently — the working tree conflict markers alone only reveal true conflicts.
+    - Each `ConflictChunk` has: `type: 'non-conflicting' | 'conflict'`, `oursLines`, `theirsLines`, `baseStartLine`, `baseEndLine`, `resolved: boolean`
 - `MergeSessionManager.ts` — owns session state:
-  - Holds `Map<filePath, FileConflictState>` (total chunks, resolved chunks)
-  - Listens to `GitService.onDidMergeStateChange` and `workspace.onDidChangeTextDocument`
-  - Re-parses affected file on document change; emits `onDidSessionUpdate`
+    - Holds `Map<filePath, FileConflictState>` (total chunks, resolved chunks)
+    - Listens to `GitService.onDidMergeStateChange` and `workspace.onDidChangeTextDocument`
+    - Re-parses affected file on document change; emits `onDidSessionUpdate`
 - `extension.ts` — activates on `onStartupFinished`; wires all services together; registers placeholder commands.
 
 **Interfaces established at end of sprint:**
+
 ```ts
-interface MergeChange { uri: Uri; fileName: string; }
-interface ConflictChunk { type: 'non-conflicting' | 'conflict'; oursLines: string[]; theirsLines: string[]; baseStartLine: number; baseEndLine: number; resolved: boolean; }
-interface FileConflictState { uri: Uri; totalChunks: number; resolvedChunks: number; }
-interface SessionState { files: FileConflictState[]; }
+interface MergeChange {
+    uri: Uri
+    fileName: string
+}
+interface ConflictChunk {
+    type: 'non-conflicting' | 'conflict'
+    oursLines: string[]
+    theirsLines: string[]
+    baseStartLine: number
+    baseEndLine: number
+    resolved: boolean
+}
+interface FileConflictState {
+    uri: Uri
+    totalChunks: number
+    resolvedChunks: number
+}
+interface SessionState {
+    files: FileConflictState[]
+}
 ```
 
 **Tests:** Full unit test coverage for `ConflictParser` (all edge cases: empty file, no conflicts, nested markers, Windows line endings). `MergeSessionManager` state transition tests with a mocked `GitService`.
@@ -111,24 +128,38 @@ interface SessionState { files: FileConflictState[]; }
 **Deliverables:**
 
 - `MergePanelProvider.ts` — implements `WebviewViewProvider`. Registered as a view in the `scm` container.
-  - On `onDidSessionUpdate`, serializes `SessionState` and posts `{ type: 'stateUpdate', state }` to the webview.
-  - Handles incoming messages: `{ type: 'openEditor', uri }` (no-op in this sprint).
+    - On `onDidSessionUpdate`, serializes `SessionState` and posts `{ type: 'stateUpdate', state }` to the webview.
+    - Handles incoming messages: `{ type: 'openEditor', uri }` (no-op in this sprint).
 - `webview/panel/` — React app (bundled via webpack):
-  - `SessionHeader` — "MERGE IN PROGRESS · N of M files resolved" + full progress bar.
-  - `BatchActionsBar` — "Accept All Ours / Accept All Theirs / Auto-Resolve" buttons (send commands to host; host applies them in Sprint 3).
-  - `FileList` — two sections: **CONFLICTS** and **RESOLVED**.
-  - `FileItem` — filename, per-file progress bar (`resolvedChunks / totalChunks`), conflict count badge, **Resolve** button. Active file (currently open in editor) highlighted with a left border accent.
+    - `SessionHeader` — "MERGE IN PROGRESS · N of M files resolved" + full progress bar.
+    - `BatchActionsBar` — "Accept All Ours / Accept All Theirs / Auto-Resolve" buttons (send commands to host; host applies them in Sprint 3).
+    - `FileList` — two sections: **CONFLICTS** and **RESOLVED**.
+    - `FileItem` — filename, per-file progress bar (`resolvedChunks / totalChunks`), conflict count badge, **Resolve** button. Active file (currently open in editor) highlighted with a left border accent.
 - `package.json` contribution: view declared in `contributes.views.scm`.
 
 **Message protocol (panel ↔ host):**
+
 ```ts
 // host → webview
-{ type: 'stateUpdate'; state: SessionState }
+{
+    type: 'stateUpdate'
+    state: SessionState
+}
 
 // webview → host
-{ type: 'openEditor'; uri: string }
-{ type: 'batchAccept'; uri: string; side: 'ours' | 'theirs' }
-{ type: 'autoResolve'; uri: string }
+{
+    type: 'openEditor'
+    uri: string
+}
+{
+    type: 'batchAccept'
+    uri: string
+    side: 'ours' | 'theirs'
+}
+{
+    type: 'autoResolve'
+    uri: string
+}
 ```
 
 **Tests:** React component tests with Vitest + jsdom. `SessionHeader`, `FileList`, `FileItem` render correctly for all state combinations (empty, all conflicted, partially resolved, all resolved).
@@ -144,27 +175,27 @@ interface SessionState { files: FileConflictState[]; }
 **Deliverables:**
 
 - `MergeEditorProvider.ts` — creates a `WebviewPanel` tab when `openEditor` is received.
-  - Reads ours/theirs content via `GitService.getFileContents`.
-  - Reads working tree (result) via `workspace.fs.readFile`.
-  - Passes all three versions + parsed chunks to the webview.
-  - Handles chunk resolution commands: writes the resolved result back to the working tree file.
+    - Reads ours/theirs content via `GitService.getFileContents`.
+    - Reads working tree (result) via `workspace.fs.readFile`.
+    - Passes all three versions + parsed chunks to the webview.
+    - Handles chunk resolution commands: writes the resolved result back to the working tree file.
 - `webview/editor/` — React app with Monaco:
-  - `ThreePaneEditor.tsx` — top-level layout: toolbar + three `EditorPane` instances + two `GutterConnector` instances.
-  - `EditorPane.tsx` — wraps a single Monaco editor instance. Left and right panes are read-only; center (result) is editable.
-  - `GutterConnector.tsx` — SVG canvas between each pair of panes. On every scroll event and on initial load, queries `editor.getTopForLineNumber()` from adjacent Monaco instances to compute y-coordinates for each chunk, then renders polygon shapes:
-    - Rectangle when chunk heights match on both sides.
-    - Trapezoid when heights differ (e.g., one pane has a placeholder blank line).
-  - Color language:
-    - **Green** — non-conflicting change (only one side modified this region)
-    - **Brown/orange** — true conflict (both sides changed this region)
-    - **Teal** — resolved chunk (accepted into result)
-    - **Gray** — unresolved placeholder in result pane
-    - **Dark** — absent line placeholder (line exists only on the other side)
-  - Per-chunk inline actions (rendered as Monaco decorations with hover widgets):
-    - Left pane: `✕` (ignore) and `>>` (accept into result)
-    - Right pane: `<<` (accept into result) and `✕` (ignore)
-  - Toolbar: **↑ Prev** / **Conflict N of M** / **Next ↓** navigation · **Accept All Ours** · **Accept All Theirs** · **Auto-Resolve Non-Conflicting** · **Save & Next File**.
-  - Synchronized scrolling: all three editors share scroll position via `editor.onDidScrollChange`.
+    - `ThreePaneEditor.tsx` — top-level layout: toolbar + three `EditorPane` instances + two `GutterConnector` instances.
+    - `EditorPane.tsx` — wraps a single Monaco editor instance. Left and right panes are read-only; center (result) is editable.
+    - `GutterConnector.tsx` — SVG canvas between each pair of panes. On every scroll event and on initial load, queries `editor.getTopForLineNumber()` from adjacent Monaco instances to compute y-coordinates for each chunk, then renders polygon shapes:
+        - Rectangle when chunk heights match on both sides.
+        - Trapezoid when heights differ (e.g., one pane has a placeholder blank line).
+    - Color language:
+        - **Green** — non-conflicting change (only one side modified this region)
+        - **Brown/orange** — true conflict (both sides changed this region)
+        - **Teal** — resolved chunk (accepted into result)
+        - **Gray** — unresolved placeholder in result pane
+        - **Dark** — absent line placeholder (line exists only on the other side)
+    - Per-chunk inline actions (rendered as Monaco decorations with hover widgets):
+        - Left pane: `✕` (ignore) and `>>` (accept into result)
+        - Right pane: `<<` (accept into result) and `✕` (ignore)
+    - Toolbar: **↑ Prev** / **Conflict N of M** / **Next ↓** navigation · **Accept All Ours** · **Accept All Theirs** · **Auto-Resolve Non-Conflicting** · **Save & Next File**.
+    - Synchronized scrolling: all three editors share scroll position via `editor.onDidScrollChange`.
 - `ConflictResolver.ts` (extension host utility) — applies chunk decisions to produce the resolved file text. Pure function — takes original text + array of `{chunk, decision}` and returns resolved string.
 
 **Tests:** `ConflictResolver` fully unit-tested. `GutterConnector` SVG output snapshot-tested with mocked line-height data. Manual testing against the `test-fixtures/` repo.
@@ -182,11 +213,11 @@ interface SessionState { files: FileConflictState[]; }
 - End-to-end flow: git merge → panel appears → Resolve → editor opens → all chunks resolved → panel marks file as resolved → all files resolved → panel shows completion state.
 - `batchAccept` and `autoResolve` commands fully wired (Sprint 2 buttons become functional).
 - Error states:
-  - No git repo: panel shows "No Git repository detected."
-  - Git extension unavailable: one-time notification; extension retries on `onDidChange`.
-  - Merge aborted externally: `MergeSessionManager` clears state; panel resets.
-  - File saved with unresolved markers: warning badge on file in panel.
-  - Monaco fails to load: fallback "Open in VS Code's default merge editor" link.
+    - No git repo: panel shows "No Git repository detected."
+    - Git extension unavailable: one-time notification; extension retries on `onDidChange`.
+    - Merge aborted externally: `MergeSessionManager` clears state; panel resets.
+    - File saved with unresolved markers: warning badge on file in panel.
+    - Monaco fails to load: fallback "Open in VS Code's default merge editor" link.
 - `test-fixtures/` — pre-baked git repo with two branches producing known conflicts across 3 files (TypeScript, JSON, Markdown). Used for manual regression testing.
 - Integration tests using `@vscode/test-electron`: trigger conflict in test fixture, assert panel renders correct file count, resolve one file, assert panel updates.
 - Marketplace assets: `README.md`, extension icon (256×256 PNG), `CHANGELOG.md`, `LICENSE`, demo GIF in README.
@@ -253,12 +284,12 @@ The architecture intentionally leaves a clean hook for AI-assisted resolution in
 
 ## Key Dependencies
 
-| Package | Purpose |
-|---|---|
-| `monaco-editor` | Standalone Monaco for the editor webview |
-| `react`, `react-dom` | Both webview UIs |
-| `@types/vscode` | Extension host types |
-| `@vscode/test-electron` | Integration test runner |
-| `webpack`, `ts-loader` | Webview bundling |
-| `vitest`, `jsdom` | React component unit tests |
-| `@vscode/vsce` | Marketplace packaging |
+| Package                 | Purpose                                  |
+| ----------------------- | ---------------------------------------- |
+| `monaco-editor`         | Standalone Monaco for the editor webview |
+| `react`, `react-dom`    | Both webview UIs                         |
+| `@types/vscode`         | Extension host types                     |
+| `@vscode/test-electron` | Integration test runner                  |
+| `webpack`, `ts-loader`  | Webview bundling                         |
+| `vitest`, `jsdom`       | React component unit tests               |
+| `@vscode/vsce`          | Marketplace packaging                    |

@@ -1,9 +1,9 @@
 {
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "rootDir": "./test/integration",
-    "outDir": "./out/test/integration"
-  },
-  "include": ["test/integration/**/*"],
-  "exclude": ["node_modules", "webview", "out"]
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "rootDir": "./test/integration",
+        "outDir": "./out/test/integration"
+    },
+    "include": ["test/integration/**/*"],
+    "exclude": ["node_modules", "webview", "out"]
 }

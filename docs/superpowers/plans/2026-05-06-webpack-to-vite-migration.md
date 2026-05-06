@@ -13,6 +13,7 @@
 ### Task 1: Install new dependencies
 
 **Files:**
+
 - Modify: `package.json`
 
 - [ ] **Step 1: Install vite and vite-plugin-monaco-editor, remove webpack deps**
@@ -43,36 +44,42 @@ git commit -m "chore: replace webpack deps with vite and vite-plugin-monaco-edit
 ### Task 2: Create vite.config.ts
 
 **Files:**
+
 - Create: `vite.config.ts`
 
 - [ ] **Step 1: Create the Vite config**
 
 ```typescript
-import path from 'path';
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import monacoEditorPlugin from 'vite-plugin-monaco-editor';
+import path from 'path'
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 
 export default defineConfig({
-  plugins: [
-    react(),
-    monacoEditorPlugin({
-      languageWorkers: [],
-    }),
-  ],
-  build: {
-    outDir: path.resolve(__dirname, 'out', 'webview'),
-    rollupOptions: {
-      input: {
-        panel: path.resolve(__dirname, 'webview', 'panel', 'index.tsx'),
-        editor: path.resolve(__dirname, 'webview', 'editor', 'index.tsx'),
-      },
-      output: {
-        entryFileNames: '[name].js',
-      },
+    plugins: [
+        react(),
+        monacoEditorPlugin({
+            languageWorkers: [],
+        }),
+    ],
+    build: {
+        outDir: path.resolve(__dirname, 'out', 'webview'),
+        rollupOptions: {
+            input: {
+                panel: path.resolve(__dirname, 'webview', 'panel', 'index.tsx'),
+                editor: path.resolve(
+                    __dirname,
+                    'webview',
+                    'editor',
+                    'index.tsx'
+                ),
+            },
+            output: {
+                entryFileNames: '[name].js',
+            },
+        },
     },
-  },
-});
+})
 ```
 
 - [ ] **Step 2: Commit**
@@ -87,6 +94,7 @@ git commit -m "feat: add vite config with panel and editor entry points"
 ### Task 3: Update package.json scripts
 
 **Files:**
+
 - Modify: `package.json`
 
 - [ ] **Step 1: Update the build, build:webview, and watch:webview scripts**
@@ -94,6 +102,7 @@ git commit -m "feat: add vite config with panel and editor entry points"
 Change these three scripts in `package.json`:
 
 Before:
+
 ```json
 "build": "tsc -p tsconfig.json && webpack --config webpack.webview.config.js --mode production",
 "build:webview": "webpack --config webpack.webview.config.js --mode development",
@@ -101,6 +110,7 @@ Before:
 ```
 
 After:
+
 ```json
 "build": "tsc -p tsconfig.json && vite build",
 "build:webview": "vite build",
@@ -121,6 +131,7 @@ git commit -m "chore: update build scripts to use vite"
 ### Task 4: Delete webpack config and update .vscodeignore
 
 **Files:**
+
 - Delete: `webpack.webview.config.js`
 - Modify: `.vscodeignore`
 
@@ -202,6 +213,7 @@ Expected: No uncommitted changes, no untracked files (except possibly `node_modu
 - [ ] **Step 2: Verify final state**
 
 Run a final check that the migration is complete:
+
 - `webpack.webview.config.js` is gone
 - `vite.config.ts` exists
 - `package.json` scripts reference `vite`, not `webpack`

@@ -1,125 +1,134 @@
-import * as vscode from 'vscode';
-import type { MergeChange } from '../types';
+import * as vscode from 'vscode'
+import type { MergeChange } from '../types'
 
 // Type stubs for the vscode.git extension API (not exported publicly)
 interface GitExtensionAPI {
-  getAPI(version: 1): GitAPI;
+    getAPI(version: 1): GitAPI
 }
 interface GitAPI {
-  repositories: Repository[];
-  onDidOpenRepository: vscode.Event<Repository>;
+    repositories: Repository[]
+    onDidOpenRepository: vscode.Event<Repository>
 }
 interface Repository {
-  rootUri: vscode.Uri;
-  state: RepositoryState;
+    rootUri: vscode.Uri
+    state: RepositoryState
 }
 interface RepositoryState {
-  mergeChanges: Change[];
-  onDidChange: vscode.Event<void>;
+    mergeChanges: Change[]
+    onDidChange: vscode.Event<void>
 }
 interface Change {
-  uri: vscode.Uri;
-  originalUri: vscode.Uri;
-  renameUri: vscode.Uri | undefined;
-  status: number;
+    uri: vscode.Uri
+    originalUri: vscode.Uri
+    renameUri: vscode.Uri | undefined
+    status: number
 }
 
 export class GitService implements vscode.Disposable {
-  private readonly _onDidMergeStateChange = new vscode.EventEmitter<MergeChange[]>();
-  readonly onDidMergeStateChange = this._onDidMergeStateChange.event;
+    private readonly _onDidMergeStateChange = new vscode.EventEmitter<
+        MergeChange[]
+    >()
+    readonly onDidMergeStateChange = this._onDidMergeStateChange.event
 
-  private gitAPI: GitAPI | undefined;
-  private readonly repoDisposables = new Map<string, vscode.Disposable>();
-  private initing = false;
-  private readonly disposables: vscode.Disposable[] = [];
+    private gitAPI: GitAPI | undefined
+    private readonly repoDisposables = new Map<string, vscode.Disposable>()
+    private initing = false
+    private readonly disposables: vscode.Disposable[] = []
 
-  constructor() {
-    this.disposables.push(this._onDidMergeStateChange);
-    this.init();
-  }
-
-  private init(): void {
-    if (this.initing) return;
-    this.initing = true;
-
-    const ext = vscode.extensions.getExtension<GitExtensionAPI>('vscode.git');
-    if (!ext) {
-      vscode.window.showWarningMessage('MergePro: Git extension not found.');
-      this.initing = false;
-      return;
-    }
-    const activate: Promise<GitExtensionAPI> = ext.isActive
-      ? Promise.resolve(ext.exports)
-      : Promise.resolve(ext.activate());
-
-    activate.then((exports) => {
-      this.gitAPI = exports.getAPI(1);
-      this.initing = false;
-      this.watchRepositories();
-    }).catch((err) => {
-      this.initing = false;
-      vscode.window.showWarningMessage(`MergePro: Failed to activate Git extension. ${err}`);
-    });
-
-    // Re-try if git extension activates later
-    this.disposables.push(
-      vscode.extensions.onDidChange(() => {
-        if (!this.gitAPI) this.init();
-      }),
-    );
-  }
-
-  private watchRepositories(): void {
-    if (!this.gitAPI) return;
-
-    for (const repo of this.gitAPI.repositories) {
-      this.watchRepo(repo);
+    constructor() {
+        this.disposables.push(this._onDidMergeStateChange)
+        this.init()
     }
 
-    this.disposables.push(
-      this.gitAPI.onDidOpenRepository((repo) => this.watchRepo(repo)),
-    );
-  }
+    private init(): void {
+        if (this.initing) return
+        this.initing = true
 
-  private watchRepo(repo: Repository): void {
-    const key = repo.rootUri.toString();
-    this.repoDisposables.get(key)?.dispose();
-    const disposable = repo.state.onDidChange(() => {
-      this._onDidMergeStateChange.fire(this.toMergeChanges(repo));
-    });
-    this.repoDisposables.set(key, disposable);
-    this.disposables.push(disposable);
-    // Fire immediately to populate initial state
-    this._onDidMergeStateChange.fire(this.toMergeChanges(repo));
-  }
+        const ext =
+            vscode.extensions.getExtension<GitExtensionAPI>('vscode.git')
+        if (!ext) {
+            vscode.window.showWarningMessage(
+                'MergePro: Git extension not found.'
+            )
+            this.initing = false
+            return
+        }
+        const activate: Promise<GitExtensionAPI> = ext.isActive
+            ? Promise.resolve(ext.exports)
+            : Promise.resolve(ext.activate())
 
-  private toMergeChanges(repo: Repository): MergeChange[] {
-    return repo.state.mergeChanges.map((c) => ({
-      uri: c.uri,
-      fileName: vscode.workspace.asRelativePath(c.uri),
-    }));
-  }
+        activate
+            .then((exports) => {
+                this.gitAPI = exports.getAPI(1)
+                this.initing = false
+                this.watchRepositories()
+            })
+            .catch((err) => {
+                this.initing = false
+                vscode.window.showWarningMessage(
+                    `MergePro: Failed to activate Git extension. ${err}`
+                )
+            })
 
-  getMergeChanges(): MergeChange[] {
-    if (!this.gitAPI) return [];
-    const repo = this.gitAPI.repositories[0];
-    if (!repo) return [];
-    return this.toMergeChanges(repo);
-  }
+        // Re-try if git extension activates later
+        this.disposables.push(
+            vscode.extensions.onDidChange(() => {
+                if (!this.gitAPI) this.init()
+            })
+        )
+    }
 
-  async getFileContents(uri: vscode.Uri, stage: 1 | 2 | 3): Promise<string> {
-    // Use git index URI scheme: git:<path>?{"path":"...","ref":":N"}
-    const gitUri = uri.with({
-      scheme: 'git',
-      query: JSON.stringify({ path: uri.fsPath, ref: `:${stage}` }),
-    });
-    const bytes = await vscode.workspace.fs.readFile(gitUri);
-    return Buffer.from(bytes).toString('utf8');
-  }
+    private watchRepositories(): void {
+        if (!this.gitAPI) return
 
-  dispose(): void {
-    this.repoDisposables.forEach((d) => d.dispose());
-    this.repoDisposables.clear();
-    this.disposables.forEach((d) => d.dispose());
-  }
+        for (const repo of this.gitAPI.repositories) {
+            this.watchRepo(repo)
+        }
+
+        this.disposables.push(
+            this.gitAPI.onDidOpenRepository((repo) => this.watchRepo(repo))
+        )
+    }
+
+    private watchRepo(repo: Repository): void {
+        const key = repo.rootUri.toString()
+        this.repoDisposables.get(key)?.dispose()
+        const disposable = repo.state.onDidChange(() => {
+            this._onDidMergeStateChange.fire(this.toMergeChanges(repo))
+        })
+        this.repoDisposables.set(key, disposable)
+        this.disposables.push(disposable)
+        // Fire immediately to populate initial state
+        this._onDidMergeStateChange.fire(this.toMergeChanges(repo))
+    }
+
+    private toMergeChanges(repo: Repository): MergeChange[] {
+        return repo.state.mergeChanges.map((c) => ({
+            uri: c.uri,
+            fileName: vscode.workspace.asRelativePath(c.uri),
+        }))
+    }
+
+    getMergeChanges(): MergeChange[] {
+        if (!this.gitAPI) return []
+        const repo = this.gitAPI.repositories[0]
+        if (!repo) return []
+        return this.toMergeChanges(repo)
+    }
+
+    async getFileContents(uri: vscode.Uri, stage: 1 | 2 | 3): Promise<string> {
+        // Use git index URI scheme: git:<path>?{"path":"...","ref":":N"}
+        const gitUri = uri.with({
+            scheme: 'git',
+            query: JSON.stringify({ path: uri.fsPath, ref: `:${stage}` }),
+        })
+        const bytes = await vscode.workspace.fs.readFile(gitUri)
+        return Buffer.from(bytes).toString('utf8')
+    }
+
+    dispose(): void {
+        this.repoDisposables.forEach((d) => d.dispose())
+        this.repoDisposables.clear()
+        this.disposables.forEach((d) => d.dispose())
+    }
 }

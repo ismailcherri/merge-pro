@@ -1,15 +1,15 @@
 {
-  "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "target": "ES2020",
-    "jsx": "react-jsx",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "lib": ["ES2020", "DOM"],
-    "sourceMap": true
-  },
-  "include": ["webview/**/*"],
-  "exclude": ["node_modules"]
+    "compilerOptions": {
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "target": "ES2020",
+        "jsx": "react-jsx",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "lib": ["ES2020", "DOM"],
+        "sourceMap": true
+    },
+    "include": ["webview/**/*"],
+    "exclude": ["node_modules"]
 }

@@ -31,6 +31,7 @@ Padded lines get a dimmed decoration to visually distinguish them from real code
 ### Gutter interactions
 
 Each SVG polygon in the gutter is split into two clickable zones:
+
 - Left half → Accept Ours (with visual indicator on hover)
 - Right half → Accept Theirs (with visual indicator on hover)
 

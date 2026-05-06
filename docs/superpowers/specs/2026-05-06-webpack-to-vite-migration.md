@@ -3,6 +3,7 @@
 ## Context
 
 The project is a VS Code extension with two compilation steps:
+
 - **Extension host** (`src/`): compiled with `tsc`, stays as-is
 - **Webview UI** (`webview/`): React + Monaco Editor, currently bundled with webpack, migrating to Vite
 
@@ -15,25 +16,25 @@ Testing already uses Vitest. Motivation: faster dev builds, simpler config, tool
 Single config, dual entry points, outputs to `out/webview/`:
 
 ```ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import monacoEditorPlugin from 'vite-plugin-monaco-editor';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 
 export default defineConfig({
-  plugins: [react(), monacoEditorPlugin({ languageWorkers: [] })],
-  build: {
-    outDir: 'out/webview',
-    rollupOptions: {
-      input: {
-        panel: path.resolve(__dirname, 'webview/panel/index.tsx'),
-        editor: path.resolve(__dirname, 'webview/editor/index.tsx'),
-      },
-      output: {
-        entryFileNames: '[name].js',
-      },
+    plugins: [react(), monacoEditorPlugin({ languageWorkers: [] })],
+    build: {
+        outDir: 'out/webview',
+        rollupOptions: {
+            input: {
+                panel: path.resolve(__dirname, 'webview/panel/index.tsx'),
+                editor: path.resolve(__dirname, 'webview/editor/index.tsx'),
+            },
+            output: {
+                entryFileNames: '[name].js',
+            },
+        },
     },
-  },
-});
+})
 ```
 
 - `@vitejs/plugin-react` is already a devDep (used by vitest webview config)
@@ -45,11 +46,11 @@ export default defineConfig({
 
 ### Scripts
 
-| Script | Before | After |
-|--------|--------|-------|
-| `build` | `tsc -p tsconfig.json && webpack --config webpack.webview.config.js --mode production` | `tsc -p tsconfig.json && vite build` |
-| `build:webview` | `webpack --config webpack.webview.config.js --mode development` | `vite build` |
-| `watch:webview` | `webpack --watch --config webpack.webview.config.js --mode development` | `vite build --watch` |
+| Script          | Before                                                                                 | After                                |
+| --------------- | -------------------------------------------------------------------------------------- | ------------------------------------ |
+| `build`         | `tsc -p tsconfig.json && webpack --config webpack.webview.config.js --mode production` | `tsc -p tsconfig.json && vite build` |
+| `build:webview` | `webpack --config webpack.webview.config.js --mode development`                        | `vite build`                         |
+| `watch:webview` | `webpack --watch --config webpack.webview.config.js --mode development`                | `vite build --watch`                 |
 
 ### Dependencies
 

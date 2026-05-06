@@ -1,118 +1,149 @@
-import * as vscode from 'vscode';
-import { randomBytes } from 'crypto';
-import type { MergeSessionManager } from '../services/MergeSessionManager';
-import type { GitService } from '../services/GitService';
-import type { HostToEditor, EditorToHost } from '../protocol';
+import { randomBytes } from 'crypto'
+import * as vscode from 'vscode'
+import type { EditorToHost, HostToEditor } from '../protocol'
+import type { GitService } from '../services/GitService'
+import type { MergeSessionManager } from '../services/MergeSessionManager'
 
 export class MergeEditorProvider implements vscode.Disposable {
-  private panels = new Map<string, vscode.WebviewPanel>();
-  private readonly disposables: vscode.Disposable[] = [];
+    private panels = new Map<string, vscode.WebviewPanel>()
+    private readonly disposables: vscode.Disposable[] = []
 
-  constructor(
-    private readonly extensionUri: vscode.Uri,
-    private readonly git: GitService,
-    private readonly session: MergeSessionManager,
-  ) {}
+    constructor(
+        private readonly extensionUri: vscode.Uri,
+        private readonly git: GitService,
+        private readonly session: MergeSessionManager
+    ) {}
 
-  async openEditor(uri: vscode.Uri): Promise<void> {
-    const key = uri.toString();
+    async openEditor(uri: vscode.Uri): Promise<void> {
+        const key = uri.toString()
 
-    // Reuse existing panel if open
-    const existing = this.panels.get(key);
-    if (existing) {
-      existing.reveal();
-      return;
+        // Reuse existing panel if open
+        const existing = this.panels.get(key)
+        if (existing) {
+            existing.reveal()
+            return
+        }
+
+        const panel = vscode.window.createWebviewPanel(
+            'mergePro.editor',
+            `MergePro: ${vscode.workspace.asRelativePath(uri)}`,
+            vscode.ViewColumn.One,
+            {
+                enableScripts: true,
+                localResourceRoots: [
+                    vscode.Uri.joinPath(this.extensionUri, 'out', 'webview'),
+                ],
+                retainContextWhenHidden: true,
+            }
+        )
+
+        this.panels.set(key, panel)
+
+        const panelDisposables: vscode.Disposable[] = []
+
+        panel.onDidDispose(
+            () => {
+                this.panels.delete(key)
+                panelDisposables.forEach((d) => d.dispose())
+            },
+            null,
+            panelDisposables
+        )
+
+        panel.webview.html = this.getHtml(panel.webview)
+
+        // Wait for webview to signal ready, then send init data
+        panel.webview.onDidReceiveMessage(
+            async (msg: EditorToHost) => {
+                if (msg.type === 'ready') {
+                    try {
+                        await this.sendInit(panel, uri)
+                    } catch (err) {
+                        vscode.window.showErrorMessage(
+                            `MergePro: Failed to load merge data — ${String(err)}`
+                        )
+                    }
+                } else if (msg.type === 'chunkResolved') {
+                    this.session.resolveChunk(uri, msg.chunkIndex, msg.decision)
+                    this.sendChunkUpdate(panel, uri)
+                } else if (msg.type === 'chunkResolvedManual') {
+                    this.session.resolveChunk(
+                        uri,
+                        msg.chunkIndex,
+                        'manual',
+                        msg.lines
+                    )
+                    this.sendChunkUpdate(panel, uri)
+                } else if (msg.type === 'saveFile') {
+                    try {
+                        const hasUnresolved = /^<{7}( |\t)/m.test(msg.content)
+                        if (hasUnresolved) {
+                            const choice =
+                                await vscode.window.showWarningMessage(
+                                    'MergePro: File still contains unresolved conflict markers. Save anyway?',
+                                    'Save',
+                                    'Cancel'
+                                )
+                            if (choice !== 'Save') return
+                        }
+                        const bytes = Buffer.from(msg.content, 'utf8')
+                        await vscode.workspace.fs.writeFile(uri, bytes)
+                        if (!hasUnresolved) {
+                            vscode.window.showInformationMessage(
+                                `MergePro: Saved ${vscode.workspace.asRelativePath(uri)}`
+                            )
+                        }
+                    } catch (err) {
+                        vscode.window.showErrorMessage(
+                            `MergePro: Failed to save — ${String(err)}`
+                        )
+                    }
+                }
+            },
+            null,
+            panelDisposables
+        )
     }
 
-    const panel = vscode.window.createWebviewPanel(
-      'mergePro.editor',
-      `MergePro: ${vscode.workspace.asRelativePath(uri)}`,
-      vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'out', 'webview')],
-        retainContextWhenHidden: true,
-      },
-    );
-
-    this.panels.set(key, panel);
-
-    const panelDisposables: vscode.Disposable[] = [];
-
-    panel.onDidDispose(() => {
-      this.panels.delete(key);
-      panelDisposables.forEach(d => d.dispose());
-    }, null, panelDisposables);
-
-    panel.webview.html = this.getHtml(panel.webview);
-
-    // Wait for webview to signal ready, then send init data
-    panel.webview.onDidReceiveMessage(async (msg: EditorToHost) => {
-      if (msg.type === 'ready') {
-        try {
-          await this.sendInit(panel, uri);
-        } catch (err) {
-          vscode.window.showErrorMessage(`MergePro: Failed to load merge data — ${String(err)}`);
+    private async sendInit(
+        panel: vscode.WebviewPanel,
+        uri: vscode.Uri
+    ): Promise<void> {
+        const [oursText, baseText, theirsText] = await Promise.all([
+            this.git.getFileContents(uri, 2),
+            this.git.getFileContents(uri, 1),
+            this.git.getFileContents(uri, 3),
+        ])
+        const chunks = this.session.getChunks(uri)
+        const msg: HostToEditor = {
+            type: 'init',
+            oursText,
+            baseText,
+            theirsText,
+            chunks,
+            fileName: vscode.workspace.asRelativePath(uri),
+            uri: uri.toString(),
         }
-      } else if (msg.type === 'chunkResolved') {
-        this.session.resolveChunk(uri, msg.chunkIndex, msg.decision);
-        this.sendChunkUpdate(panel, uri);
-      } else if (msg.type === 'chunkResolvedManual') {
-        this.session.resolveChunk(uri, msg.chunkIndex, 'manual', msg.lines);
-        this.sendChunkUpdate(panel, uri);
-      } else if (msg.type === 'saveFile') {
-        try {
-          const hasUnresolved = /^<{7}( |\t)/m.test(msg.content);
-          if (hasUnresolved) {
-            const choice = await vscode.window.showWarningMessage(
-              'MergePro: File still contains unresolved conflict markers. Save anyway?',
-              'Save', 'Cancel',
-            );
-            if (choice !== 'Save') return;
-          }
-          const bytes = Buffer.from(msg.content, 'utf8');
-          await vscode.workspace.fs.writeFile(uri, bytes);
-          if (!hasUnresolved) {
-            vscode.window.showInformationMessage(`MergePro: Saved ${vscode.workspace.asRelativePath(uri)}`);
-          }
-        } catch (err) {
-          vscode.window.showErrorMessage(`MergePro: Failed to save — ${String(err)}`);
-        }
-      }
-    }, null, panelDisposables);
-  }
+        panel.webview.postMessage(msg)
+    }
 
-  private async sendInit(panel: vscode.WebviewPanel, uri: vscode.Uri): Promise<void> {
-    const [oursText, baseText, theirsText] = await Promise.all([
-      this.git.getFileContents(uri, 2),
-      this.git.getFileContents(uri, 1),
-      this.git.getFileContents(uri, 3),
-    ]);
-    const chunks = this.session.getChunks(uri);
-    const msg: HostToEditor = {
-      type: 'init',
-      oursText,
-      baseText,
-      theirsText,
-      chunks,
-      fileName: vscode.workspace.asRelativePath(uri),
-      uri: uri.toString(),
-    };
-    panel.webview.postMessage(msg);
-  }
+    private sendChunkUpdate(panel: vscode.WebviewPanel, uri: vscode.Uri): void {
+        const chunks = this.session.getChunks(uri)
+        const msg: HostToEditor = { type: 'chunkUpdate', chunks }
+        panel.webview.postMessage(msg)
+    }
 
-  private sendChunkUpdate(panel: vscode.WebviewPanel, uri: vscode.Uri): void {
-    const chunks = this.session.getChunks(uri);
-    const msg: HostToEditor = { type: 'chunkUpdate', chunks };
-    panel.webview.postMessage(msg);
-  }
-
-  private getHtml(webview: vscode.Webview): string {
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'out', 'webview', 'editor.js'),
-    );
-    const nonce = getNonce();
-    return `<!DOCTYPE html>
+    private getHtml(webview: vscode.Webview): string {
+        const scriptUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(
+                this.extensionUri,
+                'out',
+                'webview',
+                'editor.js'
+            )
+        )
+        const nonce = getNonce()
+        return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -124,15 +155,15 @@ export class MergeEditorProvider implements vscode.Disposable {
   <div id="root"></div>
   <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
 </body>
-</html>`;
-  }
+</html>`
+    }
 
-  dispose(): void {
-    this.panels.forEach((p) => p.dispose());
-    this.disposables.forEach((d) => d.dispose());
-  }
+    dispose(): void {
+        this.panels.forEach((p) => p.dispose())
+        this.disposables.forEach((d) => d.dispose())
+    }
 }
 
 function getNonce(): string {
-  return randomBytes(16).toString('base64url');
+    return randomBytes(16).toString('base64url')
 }

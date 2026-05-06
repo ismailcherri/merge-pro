@@ -13,6 +13,7 @@
 ### Task 1: Add baseLines to ConflictChunk protocol and parser
 
 **Files:**
+
 - Modify: `src/protocol.ts`
 - Modify: `src/parsers/ConflictParser.ts`
 
@@ -22,16 +23,16 @@ In `src/protocol.ts`, add the field to the `ConflictChunk` interface:
 
 ```typescript
 export interface ConflictChunk {
-  type: 'non-conflicting' | 'conflict';
-  oursLines: string[];
-  theirsLines: string[];
-  /** Lines from the base (common ancestor) version for this chunk */
-  baseLines: string[];
-  baseStartLine: number;
-  baseEndLine: number;
-  resolvedWith?: 'ours' | 'theirs' | 'manual';
-  manualLines?: string[];
-  winner?: 'ours' | 'theirs';
+    type: 'non-conflicting' | 'conflict'
+    oursLines: string[]
+    theirsLines: string[]
+    /** Lines from the base (common ancestor) version for this chunk */
+    baseLines: string[]
+    baseStartLine: number
+    baseEndLine: number
+    resolvedWith?: 'ours' | 'theirs' | 'manual'
+    manualLines?: string[]
+    winner?: 'ours' | 'theirs'
 }
 ```
 
@@ -44,6 +45,7 @@ baseLines: baseLines.slice(chunk.baseStartLine, chunk.baseEndLine),
 ```
 
 Update all four chunk construction sites:
+
 1. Agreed non-conflicting (line 92-99): add `baseLines: baseLines.slice(Math.min(ours.baseStart, theirs.baseStart), Math.max(ours.baseEnd, theirs.baseEnd)),`
 2. Conflicting (line 101-108): add `baseLines: baseLines.slice(Math.min(ours.baseStart, theirs.baseStart), Math.max(ours.baseEnd, theirs.baseEnd)),`
 3. Ours-only non-conflicting (line 110-118): add `baseLines: baseLines.slice(ours.baseStart, ours.baseEnd),`
@@ -67,6 +69,7 @@ git commit -m "feat: add baseLines to ConflictChunk for three-pane display"
 ### Task 2: Create display document builder utility
 
 **Files:**
+
 - Create: `webview/editor/buildDisplayDocuments.ts`
 
 - [ ] **Step 1: Create the padding utility**
@@ -74,24 +77,24 @@ git commit -m "feat: add baseLines to ConflictChunk for three-pane display"
 Create `webview/editor/buildDisplayDocuments.ts`:
 
 ```typescript
-import type { ConflictChunk } from '../../src/protocol';
+import type { ConflictChunk } from '../../src/protocol'
 
 function splitLines(text: string): string[] {
-  const lines = text.replace(/\r\n/g, '\n').split('\n');
-  if (lines[lines.length - 1] === '') lines.pop();
-  return lines;
+    const lines = text.replace(/\r\n/g, '\n').split('\n')
+    if (lines[lines.length - 1] === '') lines.pop()
+    return lines
 }
 
 function pad(lines: string[], length: number): string[] {
-  const padded = [...lines];
-  while (padded.length < length) padded.push('');
-  return padded;
+    const padded = [...lines]
+    while (padded.length < length) padded.push('')
+    return padded
 }
 
 interface DisplayDocuments {
-  ours: string;
-  base: string;
-  theirs: string;
+    ours: string
+    base: string
+    theirs: string
 }
 
 /**
@@ -100,47 +103,47 @@ interface DisplayDocuments {
  * regions are copied identically to all three documents.
  */
 export function buildDisplayDocuments(
-  fullBaseText: string,
-  chunks: ConflictChunk[],
+    fullBaseText: string,
+    chunks: ConflictChunk[]
 ): DisplayDocuments {
-  const baseLines = splitLines(fullBaseText);
-  const sorted = [...chunks].sort((a, b) => a.baseStartLine - b.baseStartLine);
+    const baseLines = splitLines(fullBaseText)
+    const sorted = [...chunks].sort((a, b) => a.baseStartLine - b.baseStartLine)
 
-  const oursParts: string[] = [];
-  const baseParts: string[] = [];
-  const theirsParts: string[] = [];
-  let cursor = 0;
+    const oursParts: string[] = []
+    const baseParts: string[] = []
+    const theirsParts: string[] = []
+    let cursor = 0
 
-  for (const chunk of sorted) {
-    // Copy unmodified base lines before this chunk (identical in all three)
-    const unchanged = baseLines.slice(cursor, chunk.baseStartLine);
-    oursParts.push(...unchanged);
-    baseParts.push(...unchanged);
-    theirsParts.push(...unchanged);
-    cursor = chunk.baseEndLine;
+    for (const chunk of sorted) {
+        // Copy unmodified base lines before this chunk (identical in all three)
+        const unchanged = baseLines.slice(cursor, chunk.baseStartLine)
+        oursParts.push(...unchanged)
+        baseParts.push(...unchanged)
+        theirsParts.push(...unchanged)
+        cursor = chunk.baseEndLine
 
-    // Pad this chunk to equal height
-    const maxLines = Math.max(
-      chunk.oursLines.length,
-      chunk.baseLines.length,
-      chunk.theirsLines.length,
-    );
-    oursParts.push(...pad(chunk.oursLines, maxLines));
-    baseParts.push(...pad(chunk.baseLines, maxLines));
-    theirsParts.push(...pad(chunk.theirsLines, maxLines));
-  }
+        // Pad this chunk to equal height
+        const maxLines = Math.max(
+            chunk.oursLines.length,
+            chunk.baseLines.length,
+            chunk.theirsLines.length
+        )
+        oursParts.push(...pad(chunk.oursLines, maxLines))
+        baseParts.push(...pad(chunk.baseLines, maxLines))
+        theirsParts.push(...pad(chunk.theirsLines, maxLines))
+    }
 
-  // Copy remaining base lines after last chunk
-  const tail = baseLines.slice(cursor);
-  oursParts.push(...tail);
-  baseParts.push(...tail);
-  theirsParts.push(...tail);
+    // Copy remaining base lines after last chunk
+    const tail = baseLines.slice(cursor)
+    oursParts.push(...tail)
+    baseParts.push(...tail)
+    theirsParts.push(...tail)
 
-  return {
-    ours: oursParts.join('\n'),
-    base: baseParts.join('\n'),
-    theirs: theirsParts.join('\n'),
-  };
+    return {
+        ours: oursParts.join('\n'),
+        base: baseParts.join('\n'),
+        theirs: theirsParts.join('\n'),
+    }
 }
 ```
 
@@ -162,6 +165,7 @@ git commit -m "feat: add display document builder with chunk padding"
 ### Task 3: Rewrite GutterConnector with clickable accept zones
 
 **Files:**
+
 - Modify: `webview/editor/GutterConnector.tsx`
 
 - [ ] **Step 1: Rewrite GutterConnector**
@@ -305,6 +309,7 @@ git commit -m "feat: add clickable accept zones to gutter connector"
 ### Task 4: Simplify Toolbar
 
 **Files:**
+
 - Modify: `webview/editor/Toolbar.tsx`
 
 - [ ] **Step 1: Remove bulk accept buttons**
@@ -360,12 +365,14 @@ git commit -m "refactor: simplify toolbar, remove bulk accept buttons"
 ### Task 5: Rewrite ThreePaneEditor with padded three-pane + result
 
 **Files:**
+
 - Modify: `webview/editor/ThreePaneEditor.tsx`
 - Modify: `webview/editor/EditorPane.tsx` (minor: remove padding lines styling)
 
 - [ ] **Step 1: Rewrite ThreePaneEditor**
 
 Replace the entire file. Core changes:
+
 - Use `buildDisplayDocuments` to create padded documents
 - Three readonly editors (Ours | Base | Theirs) on top
 - Result editor (editable) below with auto-scroll to current conflict
@@ -608,6 +615,7 @@ git commit -m "feat: rewrite ThreePaneEditor with padded three-pane layout and r
 ### Task 6: Update App.tsx to wire new layout
 
 **Files:**
+
 - Modify: `webview/editor/App.tsx`
 
 - [ ] **Step 1: Pass baseText to ThreePaneEditor**
@@ -643,6 +651,7 @@ git commit -m "fix: ensure baseText is passed to ThreePaneEditor"
 ### Task 7: Update tests
 
 **Files:**
+
 - Modify: `test/unit/webview/GutterConnector.test.tsx`
 - Modify: `test/unit/ConflictParser.test.ts`
 
@@ -735,13 +744,13 @@ Expected: 4 tests pass.
 In `test/unit/ConflictParser.test.ts`, add `baseLines` to existing assertions. After each `oursLines`/`theirsLines` check, add:
 
 ```typescript
-expect(chunk.baseLines).toBeDefined();
+expect(chunk.baseLines).toBeDefined()
 ```
 
 In the existing tests, add this assertion wherever `oursLines` and `theirsLines` are checked (lines 20-21, 35-36, 47-48, 64-65, 77-78, 103-104, 112-113):
 
 ```typescript
-expect(chunks[0].baseLines.length).toBeGreaterThanOrEqual(0);
+expect(chunks[0].baseLines.length).toBeGreaterThanOrEqual(0)
 ```
 
 - [ ] **Step 3: Verify all tests pass**

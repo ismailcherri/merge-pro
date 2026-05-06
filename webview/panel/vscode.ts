@@ -1,10 +1,10 @@
-import type { PanelToHost } from '../../src/protocol';
+import type { PanelToHost } from '../../src/protocol'
 
 declare function acquireVsCodeApi(): {
-  postMessage: (msg: PanelToHost) => void;
-  getState: () => unknown;
-  setState: (state: unknown) => void;
-};
+    postMessage: (msg: PanelToHost) => void
+    getState: () => unknown
+    setState: (state: unknown) => void
+}
 
-const vscode = acquireVsCodeApi();
-export default vscode;
+const vscode = acquireVsCodeApi()
+export default vscode
