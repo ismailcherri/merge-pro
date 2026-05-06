@@ -65,7 +65,9 @@ export function ThreePaneEditor({
     const [scrollTop, setScrollTop] = useState(0)
     const [topEditorHeight, setTopEditorHeight] = useState(300)
     const [currentConflictIdx, setCurrentConflictIdx] = useState(0)
+    const [editorsMounted, setEditorsMounted] = useState(0)
     const containerRef = useRef<HTMLDivElement>(null)
+    const scrollingRef = useRef(false)
 
     const conflictChunks = chunks.filter(
         (c) => c.type === 'conflict' && c.resolvedWith === undefined
@@ -83,13 +85,24 @@ export function ThreePaneEditor({
     const baseDecorations = useMemo(() => decorationsForPane(chunks), [chunks])
     const theirDecorations = useMemo(() => decorationsForPane(chunks), [chunks])
 
+    // Guarded scroll sync — prevents feedback loop
     const handleScroll = useCallback((e: monaco.IScrollEvent) => {
+        if (scrollingRef.current) return
+        scrollingRef.current = true
         const top = e.scrollTop
         setScrollTop(top)
         leftRef.current?.getEditor()?.setScrollTop(top)
         centerRef.current?.getEditor()?.setScrollTop(top)
         rightRef.current?.getEditor()?.setScrollTop(top)
         resultRef.current?.getEditor()?.setScrollTop(top)
+        requestAnimationFrame(() => {
+            scrollingRef.current = false
+        })
+    }, [])
+
+    // Re-render once all three top editors have mounted, so gutters get valid getTop references
+    const handleEditorMounted = useCallback(() => {
+        setEditorsMounted((n) => n + 1)
     }, [])
 
     useEffect(() => {
@@ -135,9 +148,12 @@ export function ThreePaneEditor({
         })
     }
 
-    const leftEditor = leftRef.current?.getEditor() ?? null
-    const centerEditor = centerRef.current?.getEditor() ?? null
-    const rightEditor = rightRef.current?.getEditor() ?? null
+    // Force gutter recalculation after editors mount
+    const editorsReady = editorsMounted >= 3 && leftRef.current?.getEditor() != null
+
+    const leftEditor = editorsReady ? leftRef.current!.getEditor()! : null
+    const centerEditor = editorsReady ? centerRef.current!.getEditor()! : null
+    const rightEditor = editorsReady ? rightRef.current!.getEditor()! : null
 
     return (
         <div
@@ -231,6 +247,7 @@ export function ThreePaneEditor({
                         readOnly
                         decorations={ourDecorations}
                         onDidScrollChange={handleScroll}
+                        onMount={handleEditorMounted}
                     />
                 </div>
                 <GutterConnector
@@ -259,6 +276,7 @@ export function ThreePaneEditor({
                         readOnly
                         decorations={baseDecorations}
                         onDidScrollChange={handleScroll}
+                        onMount={handleEditorMounted}
                     />
                 </div>
                 <GutterConnector
@@ -287,6 +305,7 @@ export function ThreePaneEditor({
                         readOnly
                         decorations={theirDecorations}
                         onDidScrollChange={handleScroll}
+                        onMount={handleEditorMounted}
                     />
                 </div>
             </div>
