@@ -25,6 +25,9 @@ function detectLanguage(fileName: string): string {
 export class ErrorBoundary extends Component<{ children: ReactNode }, { error: boolean }> {
   state = { error: false };
   static getDerivedStateFromError() { return { error: true }; }
+  componentDidCatch(error: Error) {
+    console.error('MergePro: editor load failure:', error);
+  }
   render() {
     if (this.state.error) {
       return (

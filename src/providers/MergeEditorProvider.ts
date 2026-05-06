@@ -62,7 +62,7 @@ export class MergeEditorProvider implements vscode.Disposable {
         this.sendChunkUpdate(panel, uri);
       } else if (msg.type === 'saveFile') {
         try {
-          const hasUnresolved = msg.content.includes('<<<<<<<');
+          const hasUnresolved = /^<{7}( |\t)/m.test(msg.content);
           if (hasUnresolved) {
             const choice = await vscode.window.showWarningMessage(
               'MergePro: File still contains unresolved conflict markers. Save anyway?',
