@@ -70,6 +70,9 @@
     "lint": "eslint src webview --ext ts,tsx"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/diff": "^7.0.2",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
@@ -77,6 +80,7 @@
     "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
+    "@vitejs/plugin-react": "^4.7.0",
     "@vitest/coverage-v8": "^1.0.0",
     "@vscode/test-electron": "^2.3.0",
     "@vscode/vsce": "^2.22.0",
