@@ -4,6 +4,10 @@
   "publisher": "merge-pro-publisher",
   "description": "IntelliJ-style three-pane merge conflict resolver",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/merge-pro-publisher/merge-pro"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },

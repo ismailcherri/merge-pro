@@ -6,8 +6,12 @@ test/**
 test-fixtures/**
 docs/**
 .superpowers/**
+.claude/**
+.github/**
 .gitignore
 tsconfig*.json
 webpack.webview.config.js
+vitest*.config.ts
 package-lock.json
 **/*.map
+out/test/**
