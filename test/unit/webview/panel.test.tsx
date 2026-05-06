@@ -2,7 +2,7 @@ vi.mock('../../../webview/panel/vscode', () => ({
   default: { postMessage: vi.fn() },
 }));
 
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { SessionHeader } from '../../../webview/panel/SessionHeader';
 import { FileList } from '../../../webview/panel/FileList';
@@ -73,8 +73,8 @@ describe('App', () => {
         state: { files: [file({ fileName: 'conflict.ts', totalChunks: 2, resolvedChunks: 0 })] },
       },
     });
-    window.dispatchEvent(event);
-    expect(await screen.findByText('conflict.ts')).toBeTruthy();
+    await act(async () => { window.dispatchEvent(event); });
+    expect(screen.getByText('conflict.ts')).toBeTruthy();
   });
 
   it('posts openEditor message when Resolve clicked', async () => {
@@ -85,8 +85,8 @@ describe('App', () => {
         state: { files: [file({ uri: 'file:///a.ts', fileName: 'a.ts' })] },
       },
     });
-    window.dispatchEvent(event);
-    const btn = await screen.findByRole('button', { name: /resolve/i });
+    await act(async () => { window.dispatchEvent(event); });
+    const btn = screen.getByRole('button', { name: /resolve/i });
     fireEvent.click(btn);
     expect(vscode.postMessage).toHaveBeenCalledWith({ type: 'openEditor', uri: 'file:///a.ts' });
   });
