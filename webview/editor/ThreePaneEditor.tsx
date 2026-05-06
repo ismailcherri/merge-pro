@@ -19,6 +19,7 @@ interface Props {
 }
 
 const GUTTER_WIDTH = 52;
+const PANE_WIDTH = `calc((100% - ${GUTTER_WIDTH * 2}px) / 3)`;
 
 if (typeof document !== 'undefined') {
   const style = document.createElement('style');
@@ -130,23 +131,25 @@ export function ThreePaneEditor({ oursText, baseText, theirsText, chunks, fileNa
 
       {/* Column headers */}
       <div style={{ display: 'flex', fontSize: 11, fontWeight: 600, borderBottom: '1px solid var(--vscode-panel-border)', flexShrink: 0 }}>
-        <div style={{ flex: 1, padding: '3px 8px', color: '#9cdcfe', background: 'rgba(0,122,204,0.06)' }}>Ours</div>
+        <div style={{ width: PANE_WIDTH, padding: '3px 8px', color: '#9cdcfe', background: 'rgba(0,122,204,0.06)' }}>Ours</div>
         <div style={{ width: GUTTER_WIDTH }} />
-        <div style={{ flex: 1, padding: '3px 8px', color: '#4ec9b0', background: 'rgba(78,201,176,0.04)', textAlign: 'center' }}>Base</div>
+        <div style={{ width: PANE_WIDTH, padding: '3px 8px', color: '#4ec9b0', background: 'rgba(78,201,176,0.04)', textAlign: 'center' }}>Base</div>
         <div style={{ width: GUTTER_WIDTH }} />
-        <div style={{ flex: 1, padding: '3px 8px', color: '#c586c0', background: 'rgba(197,134,192,0.06)', textAlign: 'right' }}>Theirs</div>
+        <div style={{ width: PANE_WIDTH, padding: '3px 8px', color: '#c586c0', background: 'rgba(197,134,192,0.06)', textAlign: 'right' }}>Theirs</div>
       </div>
 
       {/* Three-pane editors */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: topEditorHeight }}>
-        <EditorPane
-          ref={leftRef}
-          value={displayDocs.ours}
-          language={language}
-          readOnly
-          decorations={ourDecorations}
-          onDidScrollChange={handleScroll}
-        />
+      <div style={{ display: 'flex', overflow: 'hidden', height: topEditorHeight, flexShrink: 0 }}>
+        <div style={{ width: PANE_WIDTH, height: '100%', overflow: 'hidden', flexShrink: 0 }}>
+          <EditorPane
+            ref={leftRef}
+            value={displayDocs.ours}
+            language={language}
+            readOnly
+            decorations={ourDecorations}
+            onDidScrollChange={handleScroll}
+          />
+        </div>
         <GutterConnector
           chunks={chunks}
           leftGetTop={getTop(leftEditor)}
@@ -156,14 +159,16 @@ export function ThreePaneEditor({ oursText, baseText, theirsText, chunks, fileNa
           scrollTop={scrollTop}
           onAcceptOurs={(i) => handleAccept(i, 'ours')}
         />
-        <EditorPane
-          ref={centerRef}
-          value={displayDocs.base}
-          language={language}
-          readOnly
-          decorations={baseDecorations}
-          onDidScrollChange={handleScroll}
-        />
+        <div style={{ width: PANE_WIDTH, height: '100%', overflow: 'hidden', flexShrink: 0 }}>
+          <EditorPane
+            ref={centerRef}
+            value={displayDocs.base}
+            language={language}
+            readOnly
+            decorations={baseDecorations}
+            onDidScrollChange={handleScroll}
+          />
+        </div>
         <GutterConnector
           chunks={chunks}
           leftGetTop={getTop(centerEditor)}
@@ -173,14 +178,16 @@ export function ThreePaneEditor({ oursText, baseText, theirsText, chunks, fileNa
           scrollTop={scrollTop}
           onAcceptTheirs={(i) => handleAccept(i, 'theirs')}
         />
-        <EditorPane
-          ref={rightRef}
-          value={displayDocs.theirs}
-          language={language}
-          readOnly
-          decorations={theirDecorations}
-          onDidScrollChange={handleScroll}
-        />
+        <div style={{ width: PANE_WIDTH, height: '100%', overflow: 'hidden', flexShrink: 0 }}>
+          <EditorPane
+            ref={rightRef}
+            value={displayDocs.theirs}
+            language={language}
+            readOnly
+            decorations={theirDecorations}
+            onDidScrollChange={handleScroll}
+          />
+        </div>
       </div>
 
       {/* Divider */}

@@ -81,6 +81,6 @@ export const EditorPane = forwardRef<EditorPaneHandle, Props>(function EditorPan
   }, [decorations]);
 
   return (
-    <div ref={containerRef} style={{ flex: 1, height: '100%', minWidth: 0 }} />
+    <div ref={containerRef} style={{ width: '100%', height: '100%', overflow: 'hidden' }} />
   );
 });
