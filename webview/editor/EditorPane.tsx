@@ -21,6 +21,8 @@ export const EditorPane = forwardRef<EditorPaneHandle, Props>(function EditorPan
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const decorationCollectionRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null);
+  const onScrollRef = useRef(onDidScrollChange);
+  useEffect(() => { onScrollRef.current = onDidScrollChange; }, [onDidScrollChange]);
 
   useImperativeHandle(ref, () => ({
     getEditor: () => editorRef.current,
@@ -45,11 +47,9 @@ export const EditorPane = forwardRef<EditorPaneHandle, Props>(function EditorPan
     editorRef.current = editor;
     decorationCollectionRef.current = editor.createDecorationsCollection([]);
 
-    if (onDidScrollChange) {
-      editor.onDidScrollChange(onDidScrollChange);
-    }
+    const scrollDisposable = editor.onDidScrollChange((e) => onScrollRef.current?.(e));
 
-    return () => editor.dispose();
+    return () => { scrollDisposable.dispose(); editor.dispose(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Mount once
 
@@ -61,6 +61,19 @@ export const EditorPane = forwardRef<EditorPaneHandle, Props>(function EditorPan
       editor.setValue(value);
     }
   }, [value]);
+
+  // Sync language changes
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const model = editor.getModel();
+    if (model) monaco.editor.setModelLanguage(model, language);
+  }, [language]);
+
+  // Sync readOnly changes
+  useEffect(() => {
+    editorRef.current?.updateOptions({ readOnly });
+  }, [readOnly]);
 
   // Sync decorations
   useEffect(() => {
