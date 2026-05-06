@@ -95,7 +95,11 @@ export function ThreePaneEditor({ oursText, baseText, theirsText, chunks, fileNa
 
   const acceptAllOurs   = () => chunks.forEach((c, i) => { if (c.type === 'conflict' && c.resolvedWith === undefined) onChunkResolved(i, 'ours'); });
   const acceptAllTheirs = () => chunks.forEach((c, i) => { if (c.type === 'conflict' && c.resolvedWith === undefined) onChunkResolved(i, 'theirs'); });
-  const autoResolve     = () => chunks.forEach((c, i) => { if (c.type === 'non-conflicting') onChunkResolved(i, 'ours'); });
+  const autoResolve = () => chunks.forEach((c, i) => {
+    if (c.type === 'non-conflicting' && c.resolvedWith === undefined) {
+      onChunkResolved(i, c.winner ?? 'ours');
+    }
+  });
 
   return (
     <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
