@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { randomBytes } from 'crypto';
 import type { MergeSessionManager } from '../services/MergeSessionManager';
 import type { GitService } from '../services/GitService';
 import type { HostToEditor, EditorToHost } from '../protocol';
@@ -35,13 +36,24 @@ export class MergeEditorProvider implements vscode.Disposable {
     );
 
     this.panels.set(key, panel);
-    panel.onDidDispose(() => this.panels.delete(key));
+
+    const panelDisposables: vscode.Disposable[] = [];
+
+    panel.onDidDispose(() => {
+      this.panels.delete(key);
+      panelDisposables.forEach(d => d.dispose());
+    }, null, panelDisposables);
+
     panel.webview.html = this.getHtml(panel.webview);
 
     // Wait for webview to signal ready, then send init data
     panel.webview.onDidReceiveMessage(async (msg: EditorToHost) => {
       if (msg.type === 'ready') {
-        await this.sendInit(panel, uri);
+        try {
+          await this.sendInit(panel, uri);
+        } catch (err) {
+          vscode.window.showErrorMessage(`MergePro: Failed to load merge data — ${String(err)}`);
+        }
       } else if (msg.type === 'chunkResolved') {
         this.session.resolveChunk(uri, msg.chunkIndex, msg.decision);
         this.sendChunkUpdate(panel, uri);
@@ -49,11 +61,15 @@ export class MergeEditorProvider implements vscode.Disposable {
         this.session.resolveChunk(uri, msg.chunkIndex, 'manual', msg.lines);
         this.sendChunkUpdate(panel, uri);
       } else if (msg.type === 'saveFile') {
-        const bytes = Buffer.from(msg.content, 'utf8');
-        await vscode.workspace.fs.writeFile(uri, bytes);
-        vscode.window.showInformationMessage(`MergePro: Saved ${vscode.workspace.asRelativePath(uri)}`);
+        try {
+          const bytes = Buffer.from(msg.content, 'utf8');
+          await vscode.workspace.fs.writeFile(uri, bytes);
+          vscode.window.showInformationMessage(`MergePro: Saved ${vscode.workspace.asRelativePath(uri)}`);
+        } catch (err) {
+          vscode.window.showErrorMessage(`MergePro: Failed to save — ${String(err)}`);
+        }
       }
-    });
+    }, null, panelDisposables);
   }
 
   private async sendInit(panel: vscode.WebviewPanel, uri: vscode.Uri): Promise<void> {
@@ -90,7 +106,7 @@ export class MergeEditorProvider implements vscode.Disposable {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}' 'unsafe-eval'; style-src 'unsafe-inline'; font-src data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; font-src data:;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>body, html { margin:0; padding:0; height:100%; overflow:hidden; } #root { height:100%; }</style>
 </head>
@@ -108,8 +124,5 @@ export class MergeEditorProvider implements vscode.Disposable {
 }
 
 function getNonce(): string {
-  let t = '';
-  const c = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 32; i++) t += c.charAt(Math.floor(Math.random() * c.length));
-  return t;
+  return randomBytes(16).toString('base64url');
 }
