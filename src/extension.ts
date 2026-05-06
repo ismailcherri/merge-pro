@@ -2,31 +2,41 @@ import * as vscode from 'vscode';
 import { GitService } from './services/GitService';
 import { MergeSessionManager } from './services/MergeSessionManager';
 import { MergePanelProvider } from './providers/MergePanelProvider';
+import { MergeEditorProvider } from './providers/MergeEditorProvider';
 import type { PanelToHost } from './protocol';
 
 export function activate(context: vscode.ExtensionContext): void {
   const git = new GitService();
   const session = new MergeSessionManager(git);
   const panel = new MergePanelProvider(context.extensionUri, session);
+  const editor = new MergeEditorProvider(context.extensionUri, git, session);
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(MergePanelProvider.viewId, panel),
 
-    // Internal command used by MergePanelProvider to relay panel messages
-    vscode.commands.registerCommand('mergePro._panelMessage', (msg: PanelToHost) => {
+    vscode.commands.registerCommand('mergePro._panelMessage', async (msg: PanelToHost) => {
       if (msg.type === 'openEditor') {
-        vscode.window.showInformationMessage(`MergePro editor for ${msg.uri} — coming in Sprint 3.`);
+        const uri = vscode.Uri.parse(msg.uri);
+        await editor.openEditor(uri);
+        panel.setActiveEditorUri(msg.uri);
       }
-      // batchAccept and autoResolve wired in Sprint 4
+      // batchAccept and autoResolve wired in Task 15
     }),
 
-    vscode.commands.registerCommand('mergePro.openEditor', () => {}),
-    vscode.commands.registerCommand('mergePro.prevConflict', () => {}),
-    vscode.commands.registerCommand('mergePro.nextConflict', () => {}),
+    vscode.commands.registerCommand('mergePro.openEditor', async () => {
+      const active = vscode.window.activeTextEditor?.document.uri;
+      if (active) await editor.openEditor(active);
+    }),
+
+    vscode.commands.registerCommand('mergePro.prevConflict', () =>
+      vscode.commands.executeCommand('mergePro._navigate', -1)),
+    vscode.commands.registerCommand('mergePro.nextConflict', () =>
+      vscode.commands.executeCommand('mergePro._navigate', 1)),
 
     git,
     session,
     panel,
+    editor,
   );
 }
 
