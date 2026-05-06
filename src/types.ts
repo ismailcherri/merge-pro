@@ -1,24 +1,13 @@
+// Extension host types — imports vscode, not safe for webview bundles.
+// Protocol and webview-safe types live in src/protocol.ts.
 import type { Uri } from 'vscode';
+import type { ConflictChunk } from './protocol';
+
+export type { ConflictChunk } from './protocol';
 
 export interface MergeChange {
   uri: Uri;
   fileName: string;
-}
-
-export interface ConflictChunk {
-  type: 'non-conflicting' | 'conflict';
-  /** Lines from the ours version in this region */
-  oursLines: string[];
-  /** Lines from the theirs version in this region */
-  theirsLines: string[];
-  /** 0-indexed start line in base (inclusive) */
-  baseStartLine: number;
-  /** 0-indexed end line in base (exclusive) */
-  baseEndLine: number;
-  resolved: boolean;
-  resolvedWith?: 'ours' | 'theirs' | 'manual';
-  /** Only set when resolvedWith === 'manual' */
-  manualLines?: string[];
 }
 
 export interface FileConflictState {
@@ -26,49 +15,9 @@ export interface FileConflictState {
   fileName: string;
   totalChunks: number;
   resolvedChunks: number;
+  chunks: ConflictChunk[];
 }
 
 export interface SessionState {
   files: FileConflictState[];
 }
-
-// Webview-safe variants (no vscode.Uri — serialized as strings)
-export interface WebviewFileState {
-  uri: string;
-  fileName: string;
-  totalChunks: number;
-  resolvedChunks: number;
-}
-
-export interface WebviewSessionState {
-  files: WebviewFileState[];
-  activeEditorUri?: string;
-}
-
-// ── Message protocol ─────────────────────────────────────────────────────────
-
-export type HostToPanel =
-  | { type: 'stateUpdate'; state: WebviewSessionState };
-
-export type PanelToHost =
-  | { type: 'openEditor'; uri: string }
-  | { type: 'batchAccept'; uri: string; side: 'ours' | 'theirs' }
-  | { type: 'autoResolve'; uri: string };
-
-export type HostToEditor =
-  | {
-      type: 'init';
-      oursText: string;
-      baseText: string;
-      theirsText: string;
-      chunks: ConflictChunk[];
-      fileName: string;
-      uri: string;
-    }
-  | { type: 'chunkUpdate'; chunks: ConflictChunk[] };
-
-export type EditorToHost =
-  | { type: 'ready' }
-  | { type: 'chunkResolved'; chunkIndex: number; decision: 'ours' | 'theirs' }
-  | { type: 'chunkResolvedManual'; chunkIndex: number; lines: string[] }
-  | { type: 'saveFile'; uri: string; content: string };
