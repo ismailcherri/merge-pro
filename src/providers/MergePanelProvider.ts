@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { MergeSessionManager } from '../services/MergeSessionManager';
 import type { SessionState } from '../types';
-import type { HostToPanel, PanelToHost } from '../protocol';
+import type { HostToPanel, PanelToHost, WebviewSessionState } from '../protocol';
 
 export class MergePanelProvider implements vscode.WebviewViewProvider, vscode.Disposable {
   static readonly viewId = 'mergePro.panel';
@@ -26,41 +26,39 @@ export class MergePanelProvider implements vscode.WebviewViewProvider, vscode.Di
     };
     view.webview.html = this.getHtml(view.webview);
 
-    view.webview.onDidReceiveMessage((msg: PanelToHost) => {
-      vscode.commands.executeCommand('mergePro._panelMessage', msg);
-    });
+    this.disposables.push(
+      view.webview.onDidReceiveMessage((msg: PanelToHost) => {
+        vscode.commands.executeCommand('mergePro._panelMessage', msg);
+      }),
+    );
 
     // Push current state immediately
     this.postState(this.session.getSessionState());
   }
 
-  private postState(state: SessionState): void {
-    if (!this.view) return;
-    const webviewState = {
+  private buildWebviewState(activeEditorUri?: string): WebviewSessionState {
+    const state = this.session.getSessionState();
+    return {
       files: state.files.map((f) => ({
         uri: f.uri.toString(),
         fileName: f.fileName,
         totalChunks: f.totalChunks,
         resolvedChunks: f.resolvedChunks,
       })),
+      activeEditorUri,
     };
-    const msg: HostToPanel = { type: 'stateUpdate', state: webviewState };
+  }
+
+  private postState(_state: SessionState): void {
+    if (!this.view) return;
+    const msg: HostToPanel = { type: 'stateUpdate', state: this.buildWebviewState() };
     this.view.webview.postMessage(msg);
   }
 
   setActiveEditorUri(uri: string | undefined): void {
     if (!this.view) return;
-    const state = this.session.getSessionState();
-    const webviewState = {
-      files: state.files.map((f) => ({
-        uri: f.uri.toString(),
-        fileName: f.fileName,
-        totalChunks: f.totalChunks,
-        resolvedChunks: f.resolvedChunks,
-      })),
-      activeEditorUri: uri,
-    };
-    this.view.webview.postMessage({ type: 'stateUpdate', state: webviewState } as HostToPanel);
+    const msg: HostToPanel = { type: 'stateUpdate', state: this.buildWebviewState(uri) };
+    this.view.webview.postMessage(msg);
   }
 
   private getHtml(webview: vscode.Webview): string {
