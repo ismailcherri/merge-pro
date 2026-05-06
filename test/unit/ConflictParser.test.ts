@@ -18,6 +18,7 @@ describe('ConflictParser.parse', () => {
     expect(chunks).toHaveLength(1);
     expect(chunks[0].type).toBe('non-conflicting');
     expect(chunks[0].oursLines).toEqual(['CHANGED']);
+    expect(chunks[0].baseLines).toEqual(['b']);
     expect(chunks[0].theirsLines).toEqual(['b']);
     expect(chunks[0].baseStartLine).toBe(1);
     expect(chunks[0].baseEndLine).toBe(2);
@@ -45,6 +46,7 @@ describe('ConflictParser.parse', () => {
     expect(chunks).toHaveLength(1);
     expect(chunks[0].type).toBe('conflict');
     expect(chunks[0].oursLines).toEqual(['OURS']);
+    expect(chunks[0].baseLines).toEqual(['b']);
     expect(chunks[0].theirsLines).toEqual(['THEIRS']);
     expect(chunks[0].baseStartLine).toBe(1);
     expect(chunks[0].baseEndLine).toBe(2);
