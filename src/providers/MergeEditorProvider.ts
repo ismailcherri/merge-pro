@@ -142,13 +142,38 @@ export class MergeEditorProvider implements vscode.Disposable {
                 'editor.js'
             )
         )
+        // Vite emits Monaco's CSS into out/webview/assets/*.css. The bundled
+        // editor.js does not auto-load it (we ship a hand-written HTML host
+        // rather than Vite's generated index.html), so we discover all CSS
+        // assets at request time and link them.
+        const assetsDir = vscode.Uri.joinPath(
+            this.extensionUri,
+            'out',
+            'webview',
+            'assets'
+        )
+        let cssLinks = ''
+        try {
+            const entries =
+                require('fs').readdirSync(assetsDir.fsPath) as string[]
+            for (const name of entries) {
+                if (!name.endsWith('.css')) continue
+                const href = webview.asWebviewUri(
+                    vscode.Uri.joinPath(assetsDir, name)
+                )
+                cssLinks += `\n  <link rel="stylesheet" href="${href}">`
+            }
+        } catch {
+            // Build hasn't run or the dir is missing — webview will still load
+            // but Monaco styling will be absent.
+        }
         const nonce = getNonce()
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}' 'strict-dynamic'; style-src 'unsafe-inline'; font-src data:; worker-src blob:; img-src data:;">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}' 'strict-dynamic'; style-src ${webview.cspSource} 'unsafe-inline'; font-src data:; worker-src blob:; img-src data:;">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">${cssLinks}
   <style>body, html { margin:0; padding:0; height:100%; overflow:hidden; } #root { height:100%; }</style>
 </head>
 <body>

@@ -1,96 +1,71 @@
 import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { ConflictChunk } from '../../../src/protocol'
+import type { ChunkLineMap } from '../../../webview/editor/buildDisplayDocuments'
 import { GutterConnector } from '../../../webview/editor/GutterConnector'
 
 function makeChunk(
-    baseStartLine: number,
-    baseEndLine: number,
     type: 'conflict' | 'non-conflicting' = 'conflict'
 ): ConflictChunk {
     return {
         type,
-        oursLines: [],
-        baseLines: [],
-        theirsLines: [],
-        baseStartLine,
-        baseEndLine,
+        oursLines: ['a'],
+        baseLines: ['a'],
+        theirsLines: ['a'],
+        baseStartLine: 0,
+        baseEndLine: 1,
     }
 }
 
-const mockGetTop = (line: number) => (line - 1) * 26
+const trivialMap: ChunkLineMap = {
+    ours: { start: 1, end: 2 },
+    result: { start: 1, end: 2 },
+    theirs: { start: 1, end: 2 },
+}
 
 describe('GutterConnector', () => {
-    it('renders split triangles for conflict chunks', () => {
-        const chunks = [makeChunk(0, 2, 'conflict')]
+    it('renders one path per chunk plus accept button for conflicts', () => {
+        const chunks = [makeChunk('conflict'), makeChunk('non-conflicting')]
+        const chunkMaps = [trivialMap, trivialMap]
         const { container } = render(
             <GutterConnector
                 chunks={chunks}
-                leftGetTop={mockGetTop}
-                rightGetTop={mockGetTop}
+                chunkMaps={chunkMaps}
+                leftEditor={null}
+                rightEditor={null}
+                leftPane="ours"
+                rightPane="result"
+                width={48}
                 height={300}
-                width={52}
-                scrollTop={0}
+                side="left"
             />
         )
-        const group = container.querySelector('g')
-        expect(group).not.toBeNull()
-        expect(group!.querySelectorAll('polygon').length).toBe(2)
+        const paths = container.querySelectorAll('path')
+        expect(paths.length).toBe(2)
+        // Only the conflict chunk renders an accept button (a <g> with rect+text).
+        const buttons = container.querySelectorAll('g > g > rect')
+        expect(buttons.length).toBe(1)
     })
 
-    it('renders single polygon for non-conflicting chunks', () => {
-        const chunks = [makeChunk(0, 1, 'non-conflicting')]
+    it('fires onAccept with chunk index when button clicked', () => {
+        const onAccept = vi.fn()
+        const chunks = [makeChunk('conflict')]
         const { container } = render(
             <GutterConnector
                 chunks={chunks}
-                leftGetTop={mockGetTop}
-                rightGetTop={mockGetTop}
+                chunkMaps={[trivialMap]}
+                leftEditor={null}
+                rightEditor={null}
+                leftPane="ours"
+                rightPane="result"
+                width={48}
                 height={300}
-                width={52}
-                scrollTop={0}
+                side="left"
+                onAccept={onAccept}
             />
         )
-        const polygons = container.querySelectorAll('polygon')
-        expect(polygons.length).toBe(1)
-    })
-
-    it('fires onAcceptOurs when left triangle clicked', () => {
-        const onAcceptOurs = vi.fn()
-        const chunks = [makeChunk(0, 2, 'conflict')]
-        const { container } = render(
-            <GutterConnector
-                chunks={chunks}
-                leftGetTop={mockGetTop}
-                rightGetTop={mockGetTop}
-                height={300}
-                width={52}
-                scrollTop={0}
-                onAcceptOurs={onAcceptOurs}
-            />
-        )
-        const group = container.querySelector('g')!
-        const leftTriangle = group.querySelectorAll('polygon')[0]
-        fireEvent.click(leftTriangle)
-        expect(onAcceptOurs).toHaveBeenCalledWith(0)
-    })
-
-    it('fires onAcceptTheirs when right triangle clicked', () => {
-        const onAcceptTheirs = vi.fn()
-        const chunks = [makeChunk(0, 2, 'conflict')]
-        const { container } = render(
-            <GutterConnector
-                chunks={chunks}
-                leftGetTop={mockGetTop}
-                rightGetTop={mockGetTop}
-                height={300}
-                width={52}
-                scrollTop={0}
-                onAcceptTheirs={onAcceptTheirs}
-            />
-        )
-        const group = container.querySelector('g')!
-        const rightTriangle = group.querySelectorAll('polygon')[1]
-        fireEvent.click(rightTriangle)
-        expect(onAcceptTheirs).toHaveBeenCalledWith(0)
+        const buttonGroup = container.querySelector('g > g')!
+        fireEvent.click(buttonGroup)
+        expect(onAccept).toHaveBeenCalledWith(0)
     })
 })

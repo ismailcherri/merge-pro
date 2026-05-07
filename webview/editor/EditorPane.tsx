@@ -47,10 +47,9 @@ export const EditorPane = forwardRef<EditorPaneHandle, Props>(
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
                 lineNumbers: 'on',
-                lineNumbersMinChars: 3,
+                lineNumbersMinChars: 4,
                 glyphMargin: false,
                 folding: false,
-                lineDecorationsWidth: 3,
                 renderLineHighlight: 'none',
                 overviewRulerLanes: 0,
                 scrollbar: {

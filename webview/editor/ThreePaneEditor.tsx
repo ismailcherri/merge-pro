@@ -1,11 +1,12 @@
 import * as monaco from 'monaco-editor'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ConflictChunk } from '../../src/protocol'
 import { resolveFile } from '../../src/utils/ConflictResolver'
+import { buildDisplayDocuments, ChunkLineMap, LineRange } from './buildDisplayDocuments'
 import { EditorPane, EditorPaneHandle } from './EditorPane'
 import { GutterConnector } from './GutterConnector'
+import { mapLine, Pane } from './lineMapping'
 import { Toolbar } from './Toolbar'
-import { buildDisplayDocuments, DisplayRange } from './buildDisplayDocuments'
 
 interface Props {
     oursText: string
@@ -18,13 +19,15 @@ interface Props {
     onSave: (content: string) => void
 }
 
-const GUTTER_WIDTH = 52
-// 2px border per gutter side × 2 gutters = 4 extra px
+const GUTTER_WIDTH = 48
 const PANE_WIDTH = `calc((100% - ${GUTTER_WIDTH * 2 + 4}px) / 3)`
 
 if (typeof document !== 'undefined') {
-    const style = document.createElement('style')
-    style.textContent = `
+    const styleId = 'mergepro-decoration-styles'
+    if (!document.getElementById(styleId)) {
+        const style = document.createElement('style')
+        style.id = styleId
+        style.textContent = `
     .merge-ours-conflict         { background: rgba(188,63,60,0.28); border-left: 2px solid rgba(220,80,70,0.6); }
     .merge-ours-nonconflicting   { background: rgba(98,178,98,0.15); }
     .merge-ours-resolved         { background: rgba(78,201,176,0.12); }
@@ -33,21 +36,25 @@ if (typeof document !== 'undefined') {
     .merge-theirs-resolved       { background: rgba(78,201,176,0.12); }
     .merge-result-unresolved     { background: rgba(160,100,40,0.18); }
     .merge-result-resolved       { background: rgba(78,201,176,0.12); }
-  `
-    document.head.appendChild(style)
+        `
+        document.head.appendChild(style)
+    }
 }
 
 function buildPaneDecorations(
     chunks: ConflictChunk[],
-    displayRanges: DisplayRange[],
-    pane: 'ours' | 'result' | 'theirs'
+    chunkMaps: ChunkLineMap[],
+    pane: Pane
 ): monaco.editor.IModelDeltaDecoration[] {
-    return chunks.map((chunk, i) => {
-        const range = displayRanges[i]
-        if (!range) return null as unknown as monaco.editor.IModelDeltaDecoration
+    const out: monaco.editor.IModelDeltaDecoration[] = []
+    for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i]
+        const map = chunkMaps[i]
+        if (!map) continue
+        const range: LineRange = map[pane]
+        if (range.end < range.start) continue // empty range in this pane
 
         const isResolved = chunk.resolvedWith !== undefined
-
         let className: string
         if (pane === 'ours') {
             className = isResolved
@@ -62,18 +69,15 @@ function buildPaneDecorations(
                   ? 'merge-theirs-conflict'
                   : 'merge-theirs-nonconflicting'
         } else {
-            // result pane
             className = isResolved ? 'merge-result-resolved' : 'merge-result-unresolved'
         }
 
-        return {
+        out.push({
             range: new monaco.Range(range.start, 1, range.end, 1),
-            options: {
-                isWholeLine: true,
-                className,
-            },
-        }
-    }).filter(Boolean) as monaco.editor.IModelDeltaDecoration[]
+            options: { isWholeLine: true, className },
+        })
+    }
+    return out
 }
 
 export function ThreePaneEditor({
@@ -89,10 +93,12 @@ export function ThreePaneEditor({
     const leftRef = useRef<EditorPaneHandle>(null)
     const centerRef = useRef<EditorPaneHandle>(null)
     const rightRef = useRef<EditorPaneHandle>(null)
-    const [scrollTop, setScrollTop] = useState(0)
+    const containerRef = useRef<HTMLDivElement>(null)
+
     const [currentConflictIdx, setCurrentConflictIdx] = useState(0)
     const [editorsMounted, setEditorsMounted] = useState(0)
-    const scrollingRef = useRef(false)
+    const [paneHeight, setPaneHeight] = useState(300)
+    const syncingRef = useRef(false)
 
     const conflictChunks = useMemo(
         () => chunks.filter((c) => c.type === 'conflict' && c.resolvedWith === undefined),
@@ -100,57 +106,117 @@ export function ThreePaneEditor({
     )
     const totalConflicts = conflictChunks.length
 
-    const { ours, result, theirs, displayRanges } = useMemo(
-        () => buildDisplayDocuments(baseText, chunks),
-        [baseText, chunks]
+    const { ours, result, theirs, chunkMaps } = useMemo(
+        () => buildDisplayDocuments(oursText, baseText, theirsText, chunks),
+        [oursText, baseText, theirsText, chunks]
     )
 
-    // Force gutter recalculation after editors mount
-    const editorsReady = editorsMounted >= 3 && leftRef.current?.getEditor() != null
+    const editorsReady =
+        editorsMounted >= 3 &&
+        leftRef.current?.getEditor() != null &&
+        centerRef.current?.getEditor() != null &&
+        rightRef.current?.getEditor() != null
 
     const leftEditor = editorsReady ? leftRef.current!.getEditor()! : null
     const centerEditor = editorsReady ? centerRef.current!.getEditor()! : null
     const rightEditor = editorsReady ? rightRef.current!.getEditor()! : null
 
     const oursDecorations = useMemo(
-        () => buildPaneDecorations(chunks, displayRanges, 'ours'),
-        [chunks, displayRanges]
+        () => buildPaneDecorations(chunks, chunkMaps, 'ours'),
+        [chunks, chunkMaps]
     )
     const resultDecorations = useMemo(
-        () => buildPaneDecorations(chunks, displayRanges, 'result'),
-        [chunks, displayRanges]
+        () => buildPaneDecorations(chunks, chunkMaps, 'result'),
+        [chunks, chunkMaps]
     )
     const theirsDecorations = useMemo(
-        () => buildPaneDecorations(chunks, displayRanges, 'theirs'),
-        [chunks, displayRanges]
+        () => buildPaneDecorations(chunks, chunkMaps, 'theirs'),
+        [chunks, chunkMaps]
     )
 
-    // Guarded scroll sync — prevents feedback loop
-    const handleScroll = useCallback((e: monaco.IScrollEvent) => {
-        if (scrollingRef.current) return
-        scrollingRef.current = true
-        const top = e.scrollTop
-        setScrollTop(top)
-        leftRef.current?.getEditor()?.setScrollTop(top)
-        centerRef.current?.getEditor()?.setScrollTop(top)
-        rightRef.current?.getEditor()?.setScrollTop(top)
-        requestAnimationFrame(() => {
-            scrollingRef.current = false
-        })
+    // Imperative line-anchored scroll sync. The source pane's scroll
+    // position is converted to a (line, fractional offset) anchor; that
+    // anchor is mapped to each other pane's line space via `chunkMaps` and
+    // the target pane's scrollTop is set accordingly. A flag prevents the
+    // resulting scroll events on target panes from re-entering this sync
+    // and creating a feedback loop.
+    const editorOf = useCallback(
+        (pane: Pane): monaco.editor.IStandaloneCodeEditor | null => {
+            if (pane === 'ours') return leftEditor
+            if (pane === 'result') return centerEditor
+            return rightEditor
+        },
+        [leftEditor, centerEditor, rightEditor]
+    )
+
+    useEffect(() => {
+        if (!editorsReady) return
+        const panes: Pane[] = ['ours', 'result', 'theirs']
+
+        const onScroll = (sourcePane: Pane) => {
+            if (syncingRef.current) return
+            const srcEditor = editorOf(sourcePane)
+            if (!srcEditor) return
+            syncingRef.current = true
+            try {
+                const lineHeight = srcEditor.getOption(
+                    monaco.editor.EditorOption.lineHeight
+                )
+                const srcScroll = srcEditor.getScrollTop()
+                const srcLineFloat = srcScroll / Math.max(lineHeight, 1)
+                const srcLineInt = Math.max(1, Math.floor(srcLineFloat) + 1)
+                const fraction = srcLineFloat - Math.floor(srcLineFloat)
+
+                for (const target of panes) {
+                    if (target === sourcePane) continue
+                    const tgtEditor = editorOf(target)
+                    if (!tgtEditor) continue
+                    const tgtLine = mapLine(
+                        sourcePane,
+                        target,
+                        srcLineInt,
+                        chunkMaps
+                    )
+                    const tgtLineHeight = tgtEditor.getOption(
+                        monaco.editor.EditorOption.lineHeight
+                    )
+                    const tgtScroll = Math.max(
+                        0,
+                        (tgtLine - 1 + fraction) * tgtLineHeight
+                    )
+                    tgtEditor.setScrollTop(
+                        tgtScroll,
+                        monaco.editor.ScrollType.Immediate
+                    )
+                }
+            } finally {
+                syncingRef.current = false
+            }
+        }
+
+        const disposables = panes.map((p) =>
+            editorOf(p)!.onDidScrollChange(() => onScroll(p))
+        )
+        return () => disposables.forEach((d) => d.dispose())
+    }, [editorsReady, chunkMaps, editorOf])
+
+    // Track pane container height for the gutter SVG sizing.
+    useEffect(() => {
+        if (!containerRef.current) return
+        const el = containerRef.current
+        const update = () => setPaneHeight(el.clientHeight || 300)
+        update()
+        const ro = new ResizeObserver(update)
+        ro.observe(el)
+        return () => ro.disconnect()
     }, [])
 
     const handleEditorMounted = useCallback(() => {
         setEditorsMounted((n) => n + 1)
     }, [])
 
-    const getTopFn = useCallback(
-        (editor: monaco.editor.IStandaloneCodeEditor | null) =>
-            (line: number) =>
-                editor?.getTopForLineNumber(line) ?? (line - 1) * 19,
-        []
-    )
-
     const navigateConflict = (direction: 1 | -1) => {
+        if (totalConflicts === 0) return
         const next = Math.max(
             0,
             Math.min(totalConflicts - 1, currentConflictIdx + direction)
@@ -158,13 +224,12 @@ export function ThreePaneEditor({
         setCurrentConflictIdx(next)
         const chunk = conflictChunks[next]
         if (!chunk) return
-        // Find display range for this conflict chunk in the full chunks array
         const fullIdx = chunks.indexOf(chunk)
-        const displayRange = displayRanges[fullIdx]
-        const line = displayRange?.start ?? chunk.baseStartLine + 1
-        leftRef.current?.getEditor()?.revealLineInCenter(line)
-        centerRef.current?.getEditor()?.revealLineInCenter(line)
-        rightRef.current?.getEditor()?.revealLineInCenter(line)
+        const map = chunkMaps[fullIdx]
+        if (!map) return
+        leftRef.current?.getEditor()?.revealLineInCenter(map.ours.start)
+        centerRef.current?.getEditor()?.revealLineInCenter(map.result.start)
+        rightRef.current?.getEditor()?.revealLineInCenter(map.theirs.start)
     }
 
     const handleAccept = (chunkIndex: number, side: 'ours' | 'theirs') => {
@@ -178,8 +243,6 @@ export function ThreePaneEditor({
             }
         })
     }
-
-    const editorHeight = leftEditor?.getContainerDomNode()?.clientHeight ?? 300
 
     return (
         <div
@@ -203,7 +266,6 @@ export function ThreePaneEditor({
                 }}
             />
 
-            {/* Column headers */}
             <div
                 style={{
                     display: 'flex',
@@ -249,8 +311,8 @@ export function ThreePaneEditor({
                 </div>
             </div>
 
-            {/* Three-pane editors */}
             <div
+                ref={containerRef}
                 style={{
                     display: 'flex',
                     flex: 1,
@@ -259,7 +321,6 @@ export function ThreePaneEditor({
                 }}
             >
                 <div
-                    id="merge-pane-ours"
                     style={{
                         width: PANE_WIDTH,
                         height: '100%',
@@ -274,24 +335,34 @@ export function ThreePaneEditor({
                         language={language}
                         readOnly
                         decorations={oursDecorations}
-                        onDidScrollChange={handleScroll}
                         onMount={handleEditorMounted}
                     />
                 </div>
-                <div style={{ width: GUTTER_WIDTH, flexShrink: 0, flexGrow: 0, position: 'relative', overflow: 'hidden', borderLeft: '1px solid rgba(255,255,255,0.06)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+                <div
+                    style={{
+                        width: GUTTER_WIDTH,
+                        flexShrink: 0,
+                        flexGrow: 0,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        borderLeft: '1px solid rgba(255,255,255,0.06)',
+                        borderRight: '1px solid rgba(255,255,255,0.06)',
+                    }}
+                >
                     <GutterConnector
                         chunks={chunks}
-                        displayRanges={displayRanges}
-                        getTop={getTopFn(leftEditor)}
-                        height={editorHeight}
+                        chunkMaps={chunkMaps}
+                        leftEditor={leftEditor}
+                        rightEditor={centerEditor}
+                        leftPane="ours"
+                        rightPane="result"
                         width={GUTTER_WIDTH}
-                        scrollTop={scrollTop}
+                        height={paneHeight}
                         side="left"
-                        onAcceptOurs={(i) => handleAccept(i, 'ours')}
+                        onAccept={(i) => handleAccept(i, 'ours')}
                     />
                 </div>
                 <div
-                    id="merge-pane-result"
                     style={{
                         width: PANE_WIDTH,
                         height: '100%',
@@ -307,24 +378,34 @@ export function ThreePaneEditor({
                         readOnly={false}
                         showScrollbar
                         decorations={resultDecorations}
-                        onDidScrollChange={handleScroll}
                         onMount={handleEditorMounted}
                     />
                 </div>
-                <div style={{ width: GUTTER_WIDTH, flexShrink: 0, flexGrow: 0, position: 'relative', overflow: 'hidden', borderLeft: '1px solid rgba(255,255,255,0.06)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+                <div
+                    style={{
+                        width: GUTTER_WIDTH,
+                        flexShrink: 0,
+                        flexGrow: 0,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        borderLeft: '1px solid rgba(255,255,255,0.06)',
+                        borderRight: '1px solid rgba(255,255,255,0.06)',
+                    }}
+                >
                     <GutterConnector
                         chunks={chunks}
-                        displayRanges={displayRanges}
-                        getTop={getTopFn(centerEditor)}
-                        height={editorHeight}
+                        chunkMaps={chunkMaps}
+                        leftEditor={centerEditor}
+                        rightEditor={rightEditor}
+                        leftPane="result"
+                        rightPane="theirs"
                         width={GUTTER_WIDTH}
-                        scrollTop={scrollTop}
+                        height={paneHeight}
                         side="right"
-                        onAcceptTheirs={(i) => handleAccept(i, 'theirs')}
+                        onAccept={(i) => handleAccept(i, 'theirs')}
                     />
                 </div>
                 <div
-                    id="merge-pane-theirs"
                     style={{
                         width: PANE_WIDTH,
                         height: '100%',
@@ -339,7 +420,6 @@ export function ThreePaneEditor({
                         language={language}
                         readOnly
                         decorations={theirsDecorations}
-                        onDidScrollChange={handleScroll}
                         onMount={handleEditorMounted}
                     />
                 </div>

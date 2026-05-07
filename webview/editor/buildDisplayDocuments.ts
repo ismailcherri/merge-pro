@@ -6,22 +6,25 @@ function splitLines(text: string): string[] {
     return lines
 }
 
-function pad(lines: string[], length: number): string[] {
-    const padded = [...lines]
-    while (padded.length < length) padded.push('')
-    return padded
+export interface LineRange {
+    /** 1-indexed Monaco line where the chunk starts in the document. */
+    start: number
+    /** 1-indexed Monaco line where the chunk ends (inclusive). 0 means empty range at `start`. */
+    end: number
 }
 
-export interface DisplayRange {
-    start: number // 1-indexed Monaco line number where chunk starts in display doc
-    end: number   // 1-indexed Monaco line number where chunk ends (inclusive)
+export interface ChunkLineMap {
+    ours: LineRange
+    result: LineRange
+    theirs: LineRange
 }
 
-interface DisplayDocuments {
+export interface DisplayDocuments {
     ours: string
     result: string
     theirs: string
-    displayRanges: DisplayRange[] // one entry per chunk, parallel to the sorted chunks array
+    /** Parallel to the input `chunks` array (NOT to a sorted copy). */
+    chunkMaps: ChunkLineMap[]
 }
 
 function resolveChunkLines(chunk: ConflictChunk): string[] {
@@ -36,62 +39,123 @@ function resolveChunkLines(chunk: ConflictChunk): string[] {
 }
 
 /**
- * Build three display documents with identical line counts by padding
- * each conflict chunk to max(ours, result, theirs) height. Unchanged base
- * regions are copied identically to all three documents.
- * The result document reflects current chunk resolution decisions.
+ * Build three independent display documents from the actual ours/base/theirs
+ * file contents. No padding — each pane shows its real content. For each
+ * chunk we record the (1-indexed inclusive) line range it occupies in each
+ * of the three docs so the gutter can draw connectors between them and the
+ * scroll-sync layer can map a line in one pane to the corresponding line
+ * in another.
+ *
+ * Strategy: chunks are sorted by baseStartLine. We walk them in order,
+ * tracking three independent line cursors (one per output document) plus a
+ * base-file cursor. Unchanged base regions between chunks are copied
+ * identically into all three docs (advancing all cursors by the same N).
+ * Inside a chunk we emit each pane's own slice and advance only that
+ * pane's cursor by the slice length.
  */
 export function buildDisplayDocuments(
-    fullBaseText: string,
+    oursText: string,
+    baseText: string,
+    theirsText: string,
     chunks: ConflictChunk[]
 ): DisplayDocuments {
-    const baseLines = splitLines(fullBaseText)
-    const sorted = [...chunks].sort((a, b) => a.baseStartLine - b.baseStartLine)
+    const oursAllLines = splitLines(oursText)
+    const baseLines = splitLines(baseText)
+    const theirsAllLines = splitLines(theirsText)
+
+    // Sort copy for traversal but record maps in the *original* index order.
+    const sorted = chunks
+        .map((chunk, idx) => ({ chunk, idx }))
+        .sort((a, b) => a.chunk.baseStartLine - b.chunk.baseStartLine)
 
     const oursParts: string[] = []
     const resultParts: string[] = []
     const theirsParts: string[] = []
-    const displayRanges: DisplayRange[] = []
-    let cursor = 0
-    let displayLine = 1 // 1-indexed, tracks current line in the display documents
+    const chunkMaps: ChunkLineMap[] = new Array(chunks.length)
 
-    for (const chunk of sorted) {
-        // Copy unmodified base lines before this chunk (identical in all three)
-        const unchanged = baseLines.slice(cursor, chunk.baseStartLine)
-        oursParts.push(...unchanged)
-        resultParts.push(...unchanged)
-        theirsParts.push(...unchanged)
-        displayLine += unchanged.length
-        cursor = chunk.baseEndLine
+    // Per-document line cursors (count of lines emitted so far). The next
+    // pushed line will appear at line number `<cursor> + 1`.
+    let oursLine = 0
+    let resultLine = 0
+    let theirsLine = 0
 
-        const resolvedLines = resolveChunkLines(chunk)
+    // We need ours/theirs slice ranges that mirror the base region. We
+    // approximate ours/theirs unchanged regions as having the same length
+    // as the base unchanged region — this holds as long as conflict chunks
+    // capture every divergent region, which is true for the parser's output.
+    let baseCursor = 0
+    let oursCursor = 0
+    let theirsCursor = 0
 
-        // Pad this chunk to equal height
-        const maxLines = Math.max(
-            chunk.oursLines.length,
-            resolvedLines.length,
-            chunk.theirsLines.length,
-            1
-        )
+    for (const { chunk, idx } of sorted) {
+        const unchangedLen = chunk.baseStartLine - baseCursor
+        if (unchangedLen > 0) {
+            const baseSlice = baseLines.slice(baseCursor, chunk.baseStartLine)
+            const oursSlice = oursAllLines.slice(
+                oursCursor,
+                oursCursor + unchangedLen
+            )
+            const theirsSlice = theirsAllLines.slice(
+                theirsCursor,
+                theirsCursor + unchangedLen
+            )
+            // Fall back to base slice if ours/theirs ran short for any reason.
+            oursParts.push(
+                ...(oursSlice.length === unchangedLen ? oursSlice : baseSlice)
+            )
+            resultParts.push(...baseSlice)
+            theirsParts.push(
+                ...(theirsSlice.length === unchangedLen
+                    ? theirsSlice
+                    : baseSlice)
+            )
+            oursLine += unchangedLen
+            resultLine += unchangedLen
+            theirsLine += unchangedLen
+            oursCursor += unchangedLen
+            theirsCursor += unchangedLen
+            baseCursor += unchangedLen
+        }
 
-        displayRanges.push({ start: displayLine, end: displayLine + maxLines - 1 })
+        const resolved = resolveChunkLines(chunk)
 
-        oursParts.push(...pad(chunk.oursLines, maxLines))
-        resultParts.push(...pad(resolvedLines, maxLines))
-        theirsParts.push(...pad(chunk.theirsLines, maxLines))
-        displayLine += maxLines
+        const oursStart = oursLine + 1
+        const resultStart = resultLine + 1
+        const theirsStart = theirsLine + 1
+
+        oursParts.push(...chunk.oursLines)
+        resultParts.push(...resolved)
+        theirsParts.push(...chunk.theirsLines)
+
+        oursLine += chunk.oursLines.length
+        resultLine += resolved.length
+        theirsLine += chunk.theirsLines.length
+
+        chunkMaps[idx] = {
+            ours: { start: oursStart, end: oursLine },
+            result: { start: resultStart, end: resultLine },
+            theirs: { start: theirsStart, end: theirsLine },
+        }
+
+        // Advance the source cursors past this chunk.
+        const baseLen = chunk.baseEndLine - chunk.baseStartLine
+        oursCursor += chunk.oursLines.length
+        theirsCursor += chunk.theirsLines.length
+        baseCursor += baseLen
     }
 
-    // Copy remaining base lines after last chunk
-    const tail = baseLines.slice(cursor)
-    oursParts.push(...tail)
-    resultParts.push(...tail)
-    theirsParts.push(...tail)
+    // Tail after last chunk.
+    const tailBase = baseLines.slice(baseCursor)
+    const tailOurs = oursAllLines.slice(oursCursor)
+    const tailTheirs = theirsAllLines.slice(theirsCursor)
+    oursParts.push(...(tailOurs.length ? tailOurs : tailBase))
+    resultParts.push(...tailBase)
+    theirsParts.push(...(tailTheirs.length ? tailTheirs : tailBase))
 
     return {
         ours: oursParts.join('\n'),
         result: resultParts.join('\n'),
         theirs: theirsParts.join('\n'),
-        displayRanges,
+        chunkMaps,
     }
 }
