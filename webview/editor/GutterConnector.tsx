@@ -14,18 +14,18 @@ interface Props {
     onAcceptTheirs?: (chunkIndex: number) => void
 }
 
-const COLORS = {
-    'non-conflicting': {
-        fill: 'rgba(98,178,98,0.15)',
-        stroke: 'rgba(98,178,98,0.35)',
-    },
-    conflict: { fill: 'rgba(160,100,40,0.2)', stroke: 'rgba(180,110,40,0.55)' },
-    resolved: { fill: 'rgba(78,201,176,0.15)', stroke: 'rgba(78,201,176,0.5)' },
-}
+// Colors for connector bands
+const CONFLICT_FILL = 'rgba(188,63,60,0.22)'
+const CONFLICT_STROKE = 'rgba(220,80,70,0.55)'
+const NONCONFLICT_FILL = 'rgba(98,178,98,0.18)'
+const NONCONFLICT_STROKE = 'rgba(98,178,98,0.4)'
+const RESOLVED_FILL = 'rgba(78,201,176,0.18)'
+const RESOLVED_STROKE = 'rgba(78,201,176,0.45)'
 
-const BTN_H = 16
-const BTN_W = 26
-const BTN_MARGIN = 3
+// Accept button dimensions
+const BTN_W = 32
+const BTN_H = 18
+const BTN_MARGIN_TOP = 4
 
 export function GutterConnector({
     chunks,
@@ -39,80 +39,86 @@ export function GutterConnector({
     onAcceptTheirs,
 }: Props) {
     const elements = useMemo(() => {
-        return chunks.map((chunk, i) => {
+        return chunks.flatMap((chunk, i) => {
             const range = displayRanges[i]
-            if (!range) return null
+            if (!range) return []
 
             const top = getTop(range.start) - scrollTop
             const bottom = getTop(range.end + 1) - scrollTop
+            const bandH = Math.max(bottom - top, 2)
 
-            if (bottom <= top || bottom < -height || top > height * 2) return null
+            // Skip chunks entirely outside the visible viewport
+            if (bottom < -20 || top > height + 20) return []
 
             const isResolved = chunk.resolvedWith !== undefined
             const isConflict = chunk.type === 'conflict' && !isResolved
-            const colorKey = isResolved ? 'resolved' : chunk.type
-            const baseColor =
-                COLORS[colorKey as keyof typeof COLORS] ?? COLORS.conflict
 
+            const fill = isResolved
+                ? RESOLVED_FILL
+                : isConflict
+                  ? CONFLICT_FILL
+                  : NONCONFLICT_FILL
+            const stroke = isResolved
+                ? RESOLVED_STROKE
+                : isConflict
+                  ? CONFLICT_STROKE
+                  : NONCONFLICT_STROKE
+
+            // Button positioning: right-aligned in left gutter, left-aligned in right gutter
+            const btnX = side === 'left' ? width - BTN_W - 2 : 2
+            const btnY = top + BTN_MARGIN_TOP
+            const btnLabel = side === 'left' ? '<<' : '>>'
             const onAccept = () =>
                 side === 'left' ? onAcceptOurs?.(i) : onAcceptTheirs?.(i)
-            const btnLabel = side === 'left' ? '<<' : '>>'
-            const btnX = side === 'left'
-                ? width - BTN_W - BTN_MARGIN
-                : BTN_MARGIN
 
-            return (
-                <g key={`${range.start}-${range.end}`}>
-                    {/* Background connector rectangle */}
+            const result = [
+                // Connector band (full-width colored strip)
+                <rect
+                    key={`band-${i}`}
+                    x={0}
+                    y={top}
+                    width={width}
+                    height={bandH}
+                    fill={fill}
+                    stroke={stroke}
+                    strokeWidth={1}
+                />,
+            ]
+
+            if (isConflict) {
+                result.push(
+                    // Button background
                     <rect
-                        x={0}
-                        y={top}
-                        width={width}
-                        height={Math.max(bottom - top, 1)}
-                        fill={baseColor.fill}
-                        stroke={baseColor.stroke}
+                        key={`btn-bg-${i}`}
+                        x={btnX}
+                        y={btnY}
+                        width={BTN_W}
+                        height={BTN_H}
+                        rx={3}
+                        fill={side === 'left' ? 'rgba(188,63,60,0.6)' : 'rgba(60,100,188,0.6)'}
+                        stroke={side === 'left' ? 'rgba(220,80,70,0.9)' : 'rgba(70,120,220,0.9)'}
                         strokeWidth={1}
-                    />
+                        style={{ cursor: 'pointer' }}
+                        onClick={onAccept}
+                    />,
+                    // Button label
+                    <text
+                        key={`btn-lbl-${i}`}
+                        x={btnX + BTN_W / 2}
+                        y={btnY + BTN_H * 0.68}
+                        textAnchor="middle"
+                        fontSize={10}
+                        fontFamily="'SF Mono', 'Fira Code', Consolas, monospace"
+                        fontWeight="bold"
+                        fill="rgba(255,255,255,0.95)"
+                        style={{ cursor: 'pointer', userSelect: 'none', pointerEvents: 'none' }}
+                    >
+                        {btnLabel}
+                    </text>
+                )
+            }
 
-                    {/* Accept action button for unresolved conflicts */}
-                    {isConflict && (
-                        <g
-                            onClick={onAccept}
-                            style={{ cursor: 'pointer' }}
-                            onMouseEnter={(e) => {
-                                const rect = e.currentTarget.querySelector('rect')
-                                if (rect) rect.setAttribute('fill', 'rgba(255,255,255,0.2)')
-                            }}
-                            onMouseLeave={(e) => {
-                                const rect = e.currentTarget.querySelector('rect')
-                                if (rect) rect.setAttribute('fill', 'rgba(255,255,255,0.08)')
-                            }}
-                        >
-                            <rect
-                                x={btnX}
-                                y={top + BTN_MARGIN}
-                                width={BTN_W}
-                                height={BTN_H}
-                                rx={3}
-                                fill="rgba(255,255,255,0.08)"
-                                stroke="rgba(255,255,255,0.25)"
-                                strokeWidth={1}
-                            />
-                            <text
-                                x={btnX + BTN_W / 2}
-                                y={top + BTN_MARGIN + BTN_H * 0.72}
-                                textAnchor="middle"
-                                fontSize={9}
-                                fontFamily="monospace"
-                                fill="rgba(255,255,255,0.85)"
-                                style={{ pointerEvents: 'none', userSelect: 'none' }}
-                            >
-                                {btnLabel}
-                            </text>
-                        </g>
-                    )}
-                </g>
-            )
+            return result
         })
     }, [chunks, displayRanges, getTop, width, height, scrollTop, side, onAcceptOurs, onAcceptTheirs])
 
@@ -120,7 +126,7 @@ export function GutterConnector({
         <svg
             width={width}
             height={height}
-            style={{ display: 'block', flexShrink: 0, overflow: 'visible' }}
+            style={{ display: 'block', width: '100%', height: '100%' }}
             aria-hidden
         >
             {elements}

@@ -19,7 +19,8 @@ interface Props {
 }
 
 const GUTTER_WIDTH = 52
-const PANE_WIDTH = `calc((100% - ${GUTTER_WIDTH * 2}px) / 3)`
+// 2px border per gutter side × 2 gutters = 4 extra px
+const PANE_WIDTH = `calc((100% - ${GUTTER_WIDTH * 2 + 4}px) / 3)`
 
 if (typeof document !== 'undefined') {
     const style = document.createElement('style')
@@ -277,16 +278,18 @@ export function ThreePaneEditor({
                         onMount={handleEditorMounted}
                     />
                 </div>
-                <GutterConnector
-                    chunks={chunks}
-                    displayRanges={displayRanges}
-                    getTop={getTopFn(leftEditor)}
-                    height={editorHeight}
-                    width={GUTTER_WIDTH}
-                    scrollTop={scrollTop}
-                    side="left"
-                    onAcceptOurs={(i) => handleAccept(i, 'ours')}
-                />
+                <div style={{ width: GUTTER_WIDTH, flexShrink: 0, flexGrow: 0, position: 'relative', overflow: 'hidden', borderLeft: '1px solid rgba(255,255,255,0.06)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+                    <GutterConnector
+                        chunks={chunks}
+                        displayRanges={displayRanges}
+                        getTop={getTopFn(leftEditor)}
+                        height={editorHeight}
+                        width={GUTTER_WIDTH}
+                        scrollTop={scrollTop}
+                        side="left"
+                        onAcceptOurs={(i) => handleAccept(i, 'ours')}
+                    />
+                </div>
                 <div
                     id="merge-pane-result"
                     style={{
@@ -308,16 +311,18 @@ export function ThreePaneEditor({
                         onMount={handleEditorMounted}
                     />
                 </div>
-                <GutterConnector
-                    chunks={chunks}
-                    displayRanges={displayRanges}
-                    getTop={getTopFn(centerEditor)}
-                    height={editorHeight}
-                    width={GUTTER_WIDTH}
-                    scrollTop={scrollTop}
-                    side="right"
-                    onAcceptTheirs={(i) => handleAccept(i, 'theirs')}
-                />
+                <div style={{ width: GUTTER_WIDTH, flexShrink: 0, flexGrow: 0, position: 'relative', overflow: 'hidden', borderLeft: '1px solid rgba(255,255,255,0.06)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+                    <GutterConnector
+                        chunks={chunks}
+                        displayRanges={displayRanges}
+                        getTop={getTopFn(centerEditor)}
+                        height={editorHeight}
+                        width={GUTTER_WIDTH}
+                        scrollTop={scrollTop}
+                        side="right"
+                        onAcceptTheirs={(i) => handleAccept(i, 'theirs')}
+                    />
+                </div>
                 <div
                     id="merge-pane-theirs"
                     style={{

@@ -43,15 +43,21 @@ export const EditorPane = forwardRef<EditorPaneHandle, Props>(
                 language,
                 readOnly,
                 theme: 'vs-dark',
+                automaticLayout: true,
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
                 lineNumbers: 'on',
-                lineNumbersMinChars: 4,
+                lineNumbersMinChars: 3,
                 glyphMargin: false,
                 folding: false,
-                lineDecorationsWidth: 4,
+                lineDecorationsWidth: 3,
                 renderLineHighlight: 'none',
-                scrollbar: { vertical: showScrollbar ? 'visible' : 'hidden', horizontal: 'auto' },
+                overviewRulerLanes: 0,
+                scrollbar: {
+                    vertical: showScrollbar ? 'visible' : 'hidden',
+                    horizontal: 'hidden',
+                    alwaysConsumeMouseWheel: false,
+                },
             })
             editorRef.current = editor
             decorationCollectionRef.current =
