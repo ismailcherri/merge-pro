@@ -5,7 +5,7 @@ import { resolveFile } from '../../src/utils/ConflictResolver'
 import { EditorPane, EditorPaneHandle } from './EditorPane'
 import { GutterConnector } from './GutterConnector'
 import { Toolbar } from './Toolbar'
-import { buildDisplayDocuments } from './buildDisplayDocuments'
+import { buildDisplayDocuments, DisplayRange } from './buildDisplayDocuments'
 
 interface Props {
     oursText: string
@@ -24,28 +24,55 @@ const PANE_WIDTH = `calc((100% - ${GUTTER_WIDTH * 2}px) / 3)`
 if (typeof document !== 'undefined') {
     const style = document.createElement('style')
     style.textContent = `
-    .merge-chunk-non-conflicting { background: rgba(98,178,98,0.12); }
-    .merge-chunk-conflict        { background: rgba(160,100,40,0.18); }
-    .merge-chunk-resolved        { background: rgba(78,201,176,0.12); }
+    .merge-ours-conflict         { background: rgba(188,63,60,0.28); border-left: 2px solid rgba(220,80,70,0.6); }
+    .merge-ours-nonconflicting   { background: rgba(98,178,98,0.15); }
+    .merge-ours-resolved         { background: rgba(78,201,176,0.12); }
+    .merge-theirs-conflict       { background: rgba(60,100,188,0.28); border-right: 2px solid rgba(70,120,220,0.6); }
+    .merge-theirs-nonconflicting { background: rgba(197,134,192,0.15); }
+    .merge-theirs-resolved       { background: rgba(78,201,176,0.12); }
+    .merge-result-unresolved     { background: rgba(160,100,40,0.18); }
+    .merge-result-resolved       { background: rgba(78,201,176,0.12); }
   `
     document.head.appendChild(style)
 }
 
-function decorationsForPane(
-    chunks: ConflictChunk[]
+function buildPaneDecorations(
+    chunks: ConflictChunk[],
+    displayRanges: DisplayRange[],
+    pane: 'ours' | 'result' | 'theirs'
 ): monaco.editor.IModelDeltaDecoration[] {
-    return chunks.map((chunk) => ({
-        range: new monaco.Range(
-            chunk.baseStartLine + 1,
-            1,
-            chunk.baseEndLine + 1,
-            1
-        ),
-        options: {
-            isWholeLine: true,
-            className: `merge-chunk-${chunk.resolvedWith !== undefined ? 'resolved' : chunk.type}`,
-        },
-    }))
+    return chunks.map((chunk, i) => {
+        const range = displayRanges[i]
+        if (!range) return null as unknown as monaco.editor.IModelDeltaDecoration
+
+        const isResolved = chunk.resolvedWith !== undefined
+
+        let className: string
+        if (pane === 'ours') {
+            className = isResolved
+                ? 'merge-ours-resolved'
+                : chunk.type === 'conflict'
+                  ? 'merge-ours-conflict'
+                  : 'merge-ours-nonconflicting'
+        } else if (pane === 'theirs') {
+            className = isResolved
+                ? 'merge-theirs-resolved'
+                : chunk.type === 'conflict'
+                  ? 'merge-theirs-conflict'
+                  : 'merge-theirs-nonconflicting'
+        } else {
+            // result pane
+            className = isResolved ? 'merge-result-resolved' : 'merge-result-unresolved'
+        }
+
+        return {
+            range: new monaco.Range(range.start, 1, range.end, 1),
+            options: {
+                isWholeLine: true,
+                className,
+            },
+        }
+    }).filter(Boolean) as monaco.editor.IModelDeltaDecoration[]
 }
 
 export function ThreePaneEditor({
@@ -66,17 +93,36 @@ export function ThreePaneEditor({
     const [editorsMounted, setEditorsMounted] = useState(0)
     const scrollingRef = useRef(false)
 
-    const conflictChunks = chunks.filter(
-        (c) => c.type === 'conflict' && c.resolvedWith === undefined
+    const conflictChunks = useMemo(
+        () => chunks.filter((c) => c.type === 'conflict' && c.resolvedWith === undefined),
+        [chunks]
     )
     const totalConflicts = conflictChunks.length
 
-    const displayDocs = useMemo(
+    const { ours, result, theirs, displayRanges } = useMemo(
         () => buildDisplayDocuments(baseText, chunks),
         [baseText, chunks]
     )
 
-    const decorations = useMemo(() => decorationsForPane(chunks), [chunks])
+    // Force gutter recalculation after editors mount
+    const editorsReady = editorsMounted >= 3 && leftRef.current?.getEditor() != null
+
+    const leftEditor = editorsReady ? leftRef.current!.getEditor()! : null
+    const centerEditor = editorsReady ? centerRef.current!.getEditor()! : null
+    const rightEditor = editorsReady ? rightRef.current!.getEditor()! : null
+
+    const oursDecorations = useMemo(
+        () => buildPaneDecorations(chunks, displayRanges, 'ours'),
+        [chunks, displayRanges]
+    )
+    const resultDecorations = useMemo(
+        () => buildPaneDecorations(chunks, displayRanges, 'result'),
+        [chunks, displayRanges]
+    )
+    const theirsDecorations = useMemo(
+        () => buildPaneDecorations(chunks, displayRanges, 'theirs'),
+        [chunks, displayRanges]
+    )
 
     // Guarded scroll sync — prevents feedback loop
     const handleScroll = useCallback((e: monaco.IScrollEvent) => {
@@ -92,12 +138,11 @@ export function ThreePaneEditor({
         })
     }, [])
 
-    // Re-render once all three editors have mounted, so gutters get valid getTop references
     const handleEditorMounted = useCallback(() => {
         setEditorsMounted((n) => n + 1)
     }, [])
 
-    const getTop = useCallback(
+    const getTopFn = useCallback(
         (editor: monaco.editor.IStandaloneCodeEditor | null) =>
             (line: number) =>
                 editor?.getTopForLineNumber(line) ?? (line - 1) * 19,
@@ -111,11 +156,14 @@ export function ThreePaneEditor({
         )
         setCurrentConflictIdx(next)
         const chunk = conflictChunks[next]
-        if (chunk) {
-            const line = chunk.baseStartLine + 1
-            leftRef.current?.getEditor()?.revealLineInCenter(line)
-            centerRef.current?.getEditor()?.revealLineInCenter(line)
-        }
+        if (!chunk) return
+        // Find display range for this conflict chunk in the full chunks array
+        const fullIdx = chunks.indexOf(chunk)
+        const displayRange = displayRanges[fullIdx]
+        const line = displayRange?.start ?? chunk.baseStartLine + 1
+        leftRef.current?.getEditor()?.revealLineInCenter(line)
+        centerRef.current?.getEditor()?.revealLineInCenter(line)
+        rightRef.current?.getEditor()?.revealLineInCenter(line)
     }
 
     const handleAccept = (chunkIndex: number, side: 'ours' | 'theirs') => {
@@ -130,13 +178,7 @@ export function ThreePaneEditor({
         })
     }
 
-    // Force gutter recalculation after editors mount
-    const editorsReady =
-        editorsMounted >= 3 && leftRef.current?.getEditor() != null
-
-    const leftEditor = editorsReady ? leftRef.current!.getEditor()! : null
-    const centerEditor = editorsReady ? centerRef.current!.getEditor()! : null
-    const rightEditor = editorsReady ? rightRef.current!.getEditor()! : null
+    const editorHeight = leftEditor?.getContainerDomNode()?.clientHeight ?? 300
 
     return (
         <div
@@ -155,9 +197,7 @@ export function ThreePaneEditor({
                 onNext={() => navigateConflict(1)}
                 onAutoResolve={autoResolve}
                 onSave={() => {
-                    const resultContent = centerRef.current
-                        ?.getEditor()
-                        ?.getValue()
+                    const resultContent = centerRef.current?.getEditor()?.getValue()
                     onSave(resultContent ?? resolveFile(baseText, chunks))
                 }}
             />
@@ -176,8 +216,8 @@ export function ThreePaneEditor({
                     style={{
                         width: PANE_WIDTH,
                         padding: '3px 8px',
-                        color: '#9cdcfe',
-                        background: 'rgba(0,122,204,0.06)',
+                        color: '#e07070',
+                        background: 'rgba(188,63,60,0.08)',
                     }}
                 >
                     Ours
@@ -199,8 +239,8 @@ export function ThreePaneEditor({
                     style={{
                         width: PANE_WIDTH,
                         padding: '3px 8px',
-                        color: '#c586c0',
-                        background: 'rgba(197,134,192,0.06)',
+                        color: '#7090e0',
+                        background: 'rgba(60,100,188,0.08)',
                         textAlign: 'right',
                     }}
                 >
@@ -229,23 +269,22 @@ export function ThreePaneEditor({
                 >
                     <EditorPane
                         ref={leftRef}
-                        value={displayDocs.ours}
+                        value={ours}
                         language={language}
                         readOnly
-                        decorations={decorations}
+                        decorations={oursDecorations}
                         onDidScrollChange={handleScroll}
                         onMount={handleEditorMounted}
                     />
                 </div>
                 <GutterConnector
                     chunks={chunks}
-                    leftGetTop={getTop(leftEditor)}
-                    rightGetTop={getTop(centerEditor)}
-                    height={
-                        leftEditor?.getContainerDomNode()?.clientHeight ?? 300
-                    }
+                    displayRanges={displayRanges}
+                    getTop={getTopFn(leftEditor)}
+                    height={editorHeight}
                     width={GUTTER_WIDTH}
                     scrollTop={scrollTop}
+                    side="left"
                     onAcceptOurs={(i) => handleAccept(i, 'ours')}
                 />
                 <div
@@ -260,23 +299,23 @@ export function ThreePaneEditor({
                 >
                     <EditorPane
                         ref={centerRef}
-                        value={displayDocs.result}
+                        value={result}
                         language={language}
                         readOnly={false}
-                        decorations={decorations}
+                        showScrollbar
+                        decorations={resultDecorations}
                         onDidScrollChange={handleScroll}
                         onMount={handleEditorMounted}
                     />
                 </div>
                 <GutterConnector
                     chunks={chunks}
-                    leftGetTop={getTop(centerEditor)}
-                    rightGetTop={getTop(rightEditor)}
-                    height={
-                        centerEditor?.getContainerDomNode()?.clientHeight ?? 300
-                    }
+                    displayRanges={displayRanges}
+                    getTop={getTopFn(centerEditor)}
+                    height={editorHeight}
                     width={GUTTER_WIDTH}
                     scrollTop={scrollTop}
+                    side="right"
                     onAcceptTheirs={(i) => handleAccept(i, 'theirs')}
                 />
                 <div
@@ -291,10 +330,10 @@ export function ThreePaneEditor({
                 >
                     <EditorPane
                         ref={rightRef}
-                        value={displayDocs.theirs}
+                        value={theirs}
                         language={language}
                         readOnly
-                        decorations={decorations}
+                        decorations={theirsDecorations}
                         onDidScrollChange={handleScroll}
                         onMount={handleEditorMounted}
                     />

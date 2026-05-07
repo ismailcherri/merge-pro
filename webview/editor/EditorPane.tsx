@@ -10,6 +10,7 @@ interface Props {
     language: string
     readOnly: boolean
     decorations: monaco.editor.IModelDeltaDecoration[]
+    showScrollbar?: boolean
     onScroll?: (scrollTop: number) => void
     onDidScrollChange?: (e: monaco.IScrollEvent) => void
     onMount?: () => void
@@ -17,7 +18,7 @@ interface Props {
 
 export const EditorPane = forwardRef<EditorPaneHandle, Props>(
     function EditorPane(
-        { value, language, readOnly, decorations, onDidScrollChange, onMount },
+        { value, language, readOnly, decorations, showScrollbar, onDidScrollChange, onMount },
         ref
     ) {
         const containerRef = useRef<HTMLDivElement>(null)
@@ -50,7 +51,7 @@ export const EditorPane = forwardRef<EditorPaneHandle, Props>(
                 folding: false,
                 lineDecorationsWidth: 4,
                 renderLineHighlight: 'none',
-                scrollbar: { vertical: 'hidden', horizontal: 'auto' },
+                scrollbar: { vertical: showScrollbar ? 'visible' : 'hidden', horizontal: 'auto' },
             })
             editorRef.current = editor
             decorationCollectionRef.current =

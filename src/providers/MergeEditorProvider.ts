@@ -147,7 +147,7 @@ export class MergeEditorProvider implements vscode.Disposable {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}' 'strict-dynamic'; style-src 'unsafe-inline'; font-src data:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}' 'strict-dynamic'; style-src 'unsafe-inline'; font-src data:; worker-src blob:; img-src data:;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>body, html { margin:0; padding:0; height:100%; overflow:hidden; } #root { height:100%; }</style>
 </head>

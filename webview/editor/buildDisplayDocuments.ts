@@ -12,10 +12,16 @@ function pad(lines: string[], length: number): string[] {
     return padded
 }
 
+export interface DisplayRange {
+    start: number // 1-indexed Monaco line number where chunk starts in display doc
+    end: number   // 1-indexed Monaco line number where chunk ends (inclusive)
+}
+
 interface DisplayDocuments {
     ours: string
     result: string
     theirs: string
+    displayRanges: DisplayRange[] // one entry per chunk, parallel to the sorted chunks array
 }
 
 function resolveChunkLines(chunk: ConflictChunk): string[] {
@@ -45,7 +51,9 @@ export function buildDisplayDocuments(
     const oursParts: string[] = []
     const resultParts: string[] = []
     const theirsParts: string[] = []
+    const displayRanges: DisplayRange[] = []
     let cursor = 0
+    let displayLine = 1 // 1-indexed, tracks current line in the display documents
 
     for (const chunk of sorted) {
         // Copy unmodified base lines before this chunk (identical in all three)
@@ -53,6 +61,7 @@ export function buildDisplayDocuments(
         oursParts.push(...unchanged)
         resultParts.push(...unchanged)
         theirsParts.push(...unchanged)
+        displayLine += unchanged.length
         cursor = chunk.baseEndLine
 
         const resolvedLines = resolveChunkLines(chunk)
@@ -61,11 +70,16 @@ export function buildDisplayDocuments(
         const maxLines = Math.max(
             chunk.oursLines.length,
             resolvedLines.length,
-            chunk.theirsLines.length
+            chunk.theirsLines.length,
+            1
         )
+
+        displayRanges.push({ start: displayLine, end: displayLine + maxLines - 1 })
+
         oursParts.push(...pad(chunk.oursLines, maxLines))
         resultParts.push(...pad(resolvedLines, maxLines))
         theirsParts.push(...pad(chunk.theirsLines, maxLines))
+        displayLine += maxLines
     }
 
     // Copy remaining base lines after last chunk
@@ -78,5 +92,6 @@ export function buildDisplayDocuments(
         ours: oursParts.join('\n'),
         result: resultParts.join('\n'),
         theirs: theirsParts.join('\n'),
+        displayRanges,
     }
 }

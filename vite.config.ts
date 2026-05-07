@@ -1,15 +1,12 @@
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { defineConfig } from 'vite'
-import monacoEditorPlugin from 'vite-plugin-monaco-editor'
 
 export default defineConfig({
-    plugins: [
-        react(),
-        monacoEditorPlugin({
-            languageWorkers: ['editorWorkerService', 'json'],
-        }),
-    ],
+    plugins: [react()],
+    // Use relative base so dynamic import() paths resolve via import.meta.url
+    // instead of the webview frame origin (vscode-webview://), which would 403.
+    base: './',
     build: {
         outDir: path.resolve(__dirname, 'out', 'webview'),
         rollupOptions: {
