@@ -1,5 +1,5 @@
 import * as monaco from 'monaco-editor'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { ConflictChunk } from '../../src/protocol'
 import { resolveFile } from '../../src/utils/ConflictResolver'
 import { EditorPane, EditorPaneHandle } from './EditorPane'
@@ -61,12 +61,9 @@ export function ThreePaneEditor({
     const leftRef = useRef<EditorPaneHandle>(null)
     const centerRef = useRef<EditorPaneHandle>(null)
     const rightRef = useRef<EditorPaneHandle>(null)
-    const resultRef = useRef<EditorPaneHandle>(null)
     const [scrollTop, setScrollTop] = useState(0)
-    const [topEditorHeight, setTopEditorHeight] = useState(300)
     const [currentConflictIdx, setCurrentConflictIdx] = useState(0)
     const [editorsMounted, setEditorsMounted] = useState(0)
-    const containerRef = useRef<HTMLDivElement>(null)
     const scrollingRef = useRef(false)
 
     const conflictChunks = chunks.filter(
@@ -79,11 +76,7 @@ export function ThreePaneEditor({
         [baseText, chunks]
     )
 
-    const resultText = resolveFile(baseText, chunks)
-
-    const ourDecorations = useMemo(() => decorationsForPane(chunks), [chunks])
-    const baseDecorations = useMemo(() => decorationsForPane(chunks), [chunks])
-    const theirDecorations = useMemo(() => decorationsForPane(chunks), [chunks])
+    const decorations = useMemo(() => decorationsForPane(chunks), [chunks])
 
     // Guarded scroll sync — prevents feedback loop
     const handleScroll = useCallback((e: monaco.IScrollEvent) => {
@@ -94,25 +87,14 @@ export function ThreePaneEditor({
         leftRef.current?.getEditor()?.setScrollTop(top)
         centerRef.current?.getEditor()?.setScrollTop(top)
         rightRef.current?.getEditor()?.setScrollTop(top)
-        resultRef.current?.getEditor()?.setScrollTop(top)
         requestAnimationFrame(() => {
             scrollingRef.current = false
         })
     }, [])
 
-    // Re-render once all three top editors have mounted, so gutters get valid getTop references
+    // Re-render once all three editors have mounted, so gutters get valid getTop references
     const handleEditorMounted = useCallback(() => {
         setEditorsMounted((n) => n + 1)
-    }, [])
-
-    useEffect(() => {
-        if (!containerRef.current) return
-        const obs = new ResizeObserver((entries) => {
-            const h = entries[0].contentRect.height
-            setTopEditorHeight(Math.floor(h * 0.6) - 36)
-        })
-        obs.observe(containerRef.current)
-        return () => obs.disconnect()
     }, [])
 
     const getTop = useCallback(
@@ -132,7 +114,7 @@ export function ThreePaneEditor({
         if (chunk) {
             const line = chunk.baseStartLine + 1
             leftRef.current?.getEditor()?.revealLineInCenter(line)
-            resultRef.current?.getEditor()?.revealLineInCenter(line)
+            centerRef.current?.getEditor()?.revealLineInCenter(line)
         }
     }
 
@@ -149,7 +131,8 @@ export function ThreePaneEditor({
     }
 
     // Force gutter recalculation after editors mount
-    const editorsReady = editorsMounted >= 3 && leftRef.current?.getEditor() != null
+    const editorsReady =
+        editorsMounted >= 3 && leftRef.current?.getEditor() != null
 
     const leftEditor = editorsReady ? leftRef.current!.getEditor()! : null
     const centerEditor = editorsReady ? centerRef.current!.getEditor()! : null
@@ -157,7 +140,6 @@ export function ThreePaneEditor({
 
     return (
         <div
-            ref={containerRef}
             style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -172,7 +154,12 @@ export function ThreePaneEditor({
                 onPrev={() => navigateConflict(-1)}
                 onNext={() => navigateConflict(1)}
                 onAutoResolve={autoResolve}
-                onSave={() => onSave(resultText)}
+                onSave={() => {
+                    const resultContent = centerRef.current
+                        ?.getEditor()
+                        ?.getValue()
+                    onSave(resultContent ?? resolveFile(baseText, chunks))
+                }}
             />
 
             {/* Column headers */}
@@ -205,7 +192,7 @@ export function ThreePaneEditor({
                         textAlign: 'center',
                     }}
                 >
-                    Base
+                    Result
                 </div>
                 <div style={{ width: GUTTER_WIDTH }} />
                 <div
@@ -225,10 +212,9 @@ export function ThreePaneEditor({
             <div
                 style={{
                     display: 'flex',
+                    flex: 1,
+                    minHeight: 0,
                     overflow: 'hidden',
-                    height: topEditorHeight,
-                    flexShrink: 0,
-                    position: 'relative',
                 }}
             >
                 <div
@@ -238,6 +224,7 @@ export function ThreePaneEditor({
                         height: '100%',
                         overflow: 'hidden',
                         flexShrink: 0,
+                        position: 'relative',
                     }}
                 >
                     <EditorPane
@@ -245,7 +232,7 @@ export function ThreePaneEditor({
                         value={displayDocs.ours}
                         language={language}
                         readOnly
-                        decorations={ourDecorations}
+                        decorations={decorations}
                         onDidScrollChange={handleScroll}
                         onMount={handleEditorMounted}
                     />
@@ -254,13 +241,15 @@ export function ThreePaneEditor({
                     chunks={chunks}
                     leftGetTop={getTop(leftEditor)}
                     rightGetTop={getTop(centerEditor)}
-                    height={topEditorHeight}
+                    height={
+                        leftEditor?.getContainerDomNode()?.clientHeight ?? 300
+                    }
                     width={GUTTER_WIDTH}
                     scrollTop={scrollTop}
                     onAcceptOurs={(i) => handleAccept(i, 'ours')}
                 />
                 <div
-                    id="merge-pane-base"
+                    id="merge-pane-result"
                     style={{
                         width: PANE_WIDTH,
                         height: '100%',
@@ -271,10 +260,10 @@ export function ThreePaneEditor({
                 >
                     <EditorPane
                         ref={centerRef}
-                        value={displayDocs.base}
+                        value={displayDocs.result}
                         language={language}
-                        readOnly
-                        decorations={baseDecorations}
+                        readOnly={false}
+                        decorations={decorations}
                         onDidScrollChange={handleScroll}
                         onMount={handleEditorMounted}
                     />
@@ -283,7 +272,9 @@ export function ThreePaneEditor({
                     chunks={chunks}
                     leftGetTop={getTop(centerEditor)}
                     rightGetTop={getTop(rightEditor)}
-                    height={topEditorHeight}
+                    height={
+                        centerEditor?.getContainerDomNode()?.clientHeight ?? 300
+                    }
                     width={GUTTER_WIDTH}
                     scrollTop={scrollTop}
                     onAcceptTheirs={(i) => handleAccept(i, 'theirs')}
@@ -303,45 +294,11 @@ export function ThreePaneEditor({
                         value={displayDocs.theirs}
                         language={language}
                         readOnly
-                        decorations={theirDecorations}
+                        decorations={decorations}
                         onDidScrollChange={handleScroll}
                         onMount={handleEditorMounted}
                     />
                 </div>
-            </div>
-
-            {/* Divider */}
-            <div
-                style={{
-                    height: 1,
-                    background: 'var(--vscode-panel-border)',
-                    flexShrink: 0,
-                }}
-            />
-
-            {/* Result label */}
-            <div
-                style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    padding: '2px 8px',
-                    color: '#4ec9b0',
-                    background: 'rgba(78,201,176,0.04)',
-                    flexShrink: 0,
-                }}
-            >
-                Result
-            </div>
-
-            {/* Result editor */}
-            <div id="merge-pane-result" style={{ flex: 1, minHeight: 0 }}>
-                <EditorPane
-                    ref={resultRef}
-                    value={resultText}
-                    language={language}
-                    readOnly={false}
-                    decorations={[]}
-                />
             </div>
         </div>
     )
