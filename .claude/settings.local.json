@@ -14,7 +14,18 @@
       "Bash(npm uninstall *)",
       "Bash(grep -E \"\\\\.\\(json|ts|tsx|html|js\\)$\")",
       "Bash(rtk tsc *)",
-      "Bash(rtk npm *)"
+      "Bash(rtk npm *)",
+      "Bash(rtk ls *)",
+      "Bash(rtk vitest *)",
+      "Bash(rtk read *)",
+      "Bash(rtk npx *)",
+      "Read(//Users/ismailcherri/code/berlin-snooker-club/**)",
+      "Bash(rtk git *)",
+      "Bash(mkdir -p /tmp/mp)",
+      "Bash(rtk wc *)",
+      "Bash(awk 'NR>=33 && NR<=42 {print NR\": \"$0}' /tmp/mp/base.json)",
+      "Bash(awk 'NR>=33 && NR<=42 {print NR\": \"$0}' /tmp/mp/stage3.json)",
+      "Bash(rtk proxy *)"
     ]
   }
 }

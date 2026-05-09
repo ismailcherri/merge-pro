@@ -122,6 +122,94 @@ describe('ConflictParser.parse', () => {
         expect(parse(text, text, text)).toEqual([])
     })
 
+    it('pads chunk lines with unchanged base when one sides hunk is narrower than the chunk range', () => {
+        // Conflict where theirs replaces base[0..3) but ours only changes
+        // base[1..2). The chunk's base range is the union [0..3); ours's
+        // contribution must include the unchanged base[0..1) and base[2..3)
+        // so the chunk content actually spans the full range.
+        const base = join('a', 'b', 'c')
+        const ours = join('a', 'OURS', 'c')
+        const theirs = join('X', 'Y', 'Z')
+
+        const chunks = parse(ours, base, theirs)
+        expect(chunks).toHaveLength(1)
+        const c = chunks[0]
+        expect(c.type).toBe('conflict')
+        expect(c.baseStartLine).toBe(0)
+        expect(c.baseEndLine).toBe(3)
+        expect(c.oursLines).toEqual(['a', 'OURS', 'c'])
+        expect(c.theirsLines).toEqual(['X', 'Y', 'Z'])
+        expect(c.baseLines).toEqual(['a', 'b', 'c'])
+    })
+
+    it('preserves all ours content when ours-only insertion is coalesced with a wider conflict', () => {
+        // Mirrors a JSON insertion: ours adds a NEW block before an existing
+        // block whose body is also modified, while theirs replaces the whole
+        // existing block. The diff library reports two ours hunks (insert,
+        // then a small replace) plus one wide theirs hunk. Without padding,
+        // the coalesced chunk drops the unchanged structural lines that ours
+        // shares with base, and the editor's display ends up duplicating
+        // lines past the chunk.
+        const base = join(
+            'pre',
+            'BLOCK_HEADER',
+            'old_version',
+            'common_line',
+            'post'
+        )
+        const ours = join(
+            'pre',
+            'NEW_HEADER',
+            'NEW_BODY',
+            'BLOCK_HEADER',
+            'new_version',
+            'common_line',
+            'post'
+        )
+        const theirs = join('pre', 'REPLACED_A', 'REPLACED_B', 'post')
+
+        const chunks = parse(ours, base, theirs)
+        expect(chunks).toHaveLength(1)
+        const c = chunks[0]
+        // Coalesced chunk should fully describe ours's content for the base
+        // range so cursor tracking stays consistent across the chunk.
+        expect(c.oursLines).toEqual([
+            'NEW_HEADER',
+            'NEW_BODY',
+            'BLOCK_HEADER',
+            'new_version',
+            'common_line',
+        ])
+        expect(c.baseLines).toEqual([
+            'BLOCK_HEADER',
+            'old_version',
+            'common_line',
+        ])
+        expect(c.theirsLines).toEqual(['REPLACED_A', 'REPLACED_B'])
+    })
+
+    it('clusters multiple theirs hunks overlapping a single ours hunk into one chunk', () => {
+        // Mirrors the package-lock.json bug: ours replaces base[1..4) with
+        // three new lines; theirs makes two separate edits inside that same
+        // base range (an insertion and a single-line replace). All four
+        // hunks must collapse into ONE chunk whose ours/theirs content
+        // exactly reproduces each side's actual text — without phantom
+        // duplicate lines from naive coalesce.
+        const base = join('a', 'X1', 'X2', 'X3', 'z')
+        const ours = join('a', 'O1', 'O2', 'O3', 'z')
+        const theirs = join('a', 'X1', 'INSERTED', 'X2', 'T3', 'z')
+
+        const chunks = parse(ours, base, theirs)
+        expect(chunks).toHaveLength(1)
+        const c = chunks[0]
+        expect(c.type).toBe('conflict')
+        expect(c.baseStartLine).toBe(1)
+        expect(c.baseEndLine).toBe(4)
+        expect(c.oursLines).toEqual(['O1', 'O2', 'O3'])
+        expect(c.theirsLines).toEqual(['X1', 'INSERTED', 'X2', 'T3'])
+        expect(c.baseLines).toEqual(['X1', 'X2', 'X3'])
+    })
+
     it('returns chunks sorted by baseStartLine', () => {
         const base = join('a', 'b', 'c', 'd')
         const ours = join('OURS_A', 'b', 'c', 'OURS_D')

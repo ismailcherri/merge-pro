@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { ConflictChunk } from '../../src/protocol'
+import {
+    isChunkResolved,
+    resolvedChunkLines,
+    singleChangedSide,
+    type ConflictChunk,
+} from '../../src/protocol'
 import { resolveFile } from '../../src/utils/ConflictResolver'
 
 const join = (...lines: string[]) => lines.join('\n')
@@ -133,5 +138,83 @@ describe('resolveFile', () => {
     it('returns base unchanged when no chunks', () => {
         const base = join('a', 'b', 'c')
         expect(resolveFile(base, [])).toBe(base)
+    })
+})
+
+describe('one-sided non-conflicting chunks', () => {
+    const oursOnly: ConflictChunk = {
+        type: 'non-conflicting',
+        oursLines: ['OURS'],
+        baseLines: ['b'],
+        theirsLines: ['b'],
+        baseStartLine: 1,
+        baseEndLine: 2,
+        winner: 'ours',
+    }
+    const theirsOnly: ConflictChunk = {
+        type: 'non-conflicting',
+        oursLines: ['b'],
+        baseLines: ['b'],
+        theirsLines: ['THEIRS'],
+        baseStartLine: 1,
+        baseEndLine: 2,
+        winner: 'theirs',
+    }
+
+    it('singleChangedSide identifies ours-only and theirs-only', () => {
+        expect(singleChangedSide(oursOnly)).toBe('ours')
+        expect(singleChangedSide(theirsOnly)).toBe('theirs')
+    })
+
+    it('ours-only chunk is resolved by oursDecision alone', () => {
+        expect(isChunkResolved(oursOnly)).toBe(false)
+        expect(
+            isChunkResolved({ ...oursOnly, oursDecision: 'accept' })
+        ).toBe(true)
+        expect(
+            isChunkResolved({ ...oursOnly, oursDecision: 'discard' })
+        ).toBe(true)
+        // theirsDecision alone does not resolve an ours-only chunk
+        expect(
+            isChunkResolved({ ...oursOnly, theirsDecision: 'accept' })
+        ).toBe(false)
+    })
+
+    it('theirs-only chunk is resolved by theirsDecision alone', () => {
+        expect(isChunkResolved(theirsOnly)).toBe(false)
+        expect(
+            isChunkResolved({ ...theirsOnly, theirsDecision: 'accept' })
+        ).toBe(true)
+        expect(
+            isChunkResolved({ ...theirsOnly, oursDecision: 'accept' })
+        ).toBe(false)
+    })
+
+    it('accept on the changed side yields its lines; discard yields base', () => {
+        expect(
+            resolvedChunkLines({ ...oursOnly, oursDecision: 'accept' })
+        ).toEqual(['OURS'])
+        expect(
+            resolvedChunkLines({ ...oursOnly, oursDecision: 'discard' })
+        ).toEqual(['b'])
+        expect(
+            resolvedChunkLines({ ...theirsOnly, theirsDecision: 'accept' })
+        ).toEqual(['THEIRS'])
+        expect(
+            resolvedChunkLines({ ...theirsOnly, theirsDecision: 'discard' })
+        ).toEqual(['b'])
+    })
+
+    it('does not duplicate content when both decisions are accept on a one-sided chunk', () => {
+        // Previously "accept ours + accept theirs" concatenated, producing
+        // duplicate base content for a one-sided change. Now the unchanged
+        // side is ignored.
+        const base = join('a', 'b', 'c')
+        const chunk: ConflictChunk = {
+            ...oursOnly,
+            oursDecision: 'accept',
+            theirsDecision: 'accept',
+        }
+        expect(resolveFile(base, [chunk])).toBe(join('a', 'OURS', 'c'))
     })
 })

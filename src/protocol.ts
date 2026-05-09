@@ -24,8 +24,30 @@ export interface ConflictChunk {
     winner?: 'ours' | 'theirs'
 }
 
+function linesEqual(a: string[], b: string[]): boolean {
+    return a.length === b.length && a.every((v, i) => v === b[i])
+}
+
+/**
+ * Returns the single side that actually changed relative to base, or null if
+ * both sides changed (or neither did). Used to drive one-sided UX where the
+ * unchanged side has nothing for the user to accept or discard.
+ */
+export function singleChangedSide(
+    chunk: ConflictChunk
+): 'ours' | 'theirs' | null {
+    const oursChanged = !linesEqual(chunk.oursLines, chunk.baseLines)
+    const theirsChanged = !linesEqual(chunk.theirsLines, chunk.baseLines)
+    if (oursChanged && !theirsChanged) return 'ours'
+    if (theirsChanged && !oursChanged) return 'theirs'
+    return null
+}
+
 export function isChunkResolved(chunk: ConflictChunk): boolean {
     if (chunk.manualLines !== undefined) return true
+    const single = singleChangedSide(chunk)
+    if (single === 'ours') return chunk.oursDecision !== undefined
+    if (single === 'theirs') return chunk.theirsDecision !== undefined
     return chunk.oursDecision !== undefined && chunk.theirsDecision !== undefined
 }
 
@@ -36,6 +58,15 @@ export function isChunkResolved(chunk: ConflictChunk): boolean {
  */
 export function resolvedChunkLines(chunk: ConflictChunk): string[] {
     if (chunk.manualLines !== undefined) return chunk.manualLines
+    const single = singleChangedSide(chunk)
+    if (single === 'ours') {
+        if (chunk.oursDecision === 'accept') return chunk.oursLines
+        return chunk.baseLines
+    }
+    if (single === 'theirs') {
+        if (chunk.theirsDecision === 'accept') return chunk.theirsLines
+        return chunk.baseLines
+    }
     const o = chunk.oursDecision
     const t = chunk.theirsDecision
     if (o === 'accept' && t === 'accept') {

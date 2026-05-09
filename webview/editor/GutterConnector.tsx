@@ -2,6 +2,7 @@ import * as monaco from 'monaco-editor'
 import { useEffect, useMemo, useRef } from 'react'
 import {
     isChunkResolved,
+    singleChangedSide,
     type ConflictChunk,
     type SideDecision,
 } from '../../src/protocol'
@@ -210,10 +211,12 @@ export function GutterConnector({
                     decisionSide === 'ours'
                         ? chunk.oursDecision
                         : chunk.theirsDecision
-                // Show accept/discard on every change (including non-conflicting
-                // ones) until it's fully resolved, matching IntelliJ — this
-                // makes sure no incoming change is silently merged.
-                const showButtons = !v.isResolved
+                // Hide buttons on the side that didn't change — there's
+                // nothing for the user to accept or discard there. Matches
+                // IntelliJ's one-sided change behavior.
+                const single = singleChangedSide(chunk)
+                const sideHasChange = single === null || single === decisionSide
+                const showButtons = !v.isResolved && sideHasChange
                 // Order buttons so accept is on the inner edge (closer to result).
                 // Left gutter: [X][«]   Right gutter: [»][X]
                 const acceptIdx = side === 'left' ? 1 : 0

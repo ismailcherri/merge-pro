@@ -73,6 +73,34 @@ function overlaps(a: Hunk, b: Hunk): boolean {
     return a.baseStart < b.baseEnd && b.baseStart < a.baseEnd
 }
 
+/**
+ * Reconstructs one side's content for a chunk's full base range by walking
+ * the side's hunks in order: contribute each hunk's newLines, and fill the
+ * gaps between hunks (within the chunk's range) with the corresponding base
+ * lines, which are unchanged in this side by definition.
+ */
+function reconstructSide(
+    hunks: Hunk[],
+    baseStart: number,
+    baseEnd: number,
+    baseLines: string[]
+): string[] {
+    if (hunks.length === 0) return baseLines.slice(baseStart, baseEnd)
+    const out: string[] = []
+    let cursor = baseStart
+    for (const h of hunks) {
+        if (cursor < h.baseStart) {
+            out.push(...baseLines.slice(cursor, h.baseStart))
+        }
+        out.push(...h.newLines)
+        cursor = h.baseEnd
+    }
+    if (cursor < baseEnd) {
+        out.push(...baseLines.slice(cursor, baseEnd))
+    }
+    return out
+}
+
 export function parse(
     oursText: string,
     baseText: string,
@@ -84,74 +112,128 @@ export function parse(
     const oursHunks = extractHunks(baseText, oursText, 'ours')
     const theirsHunks = extractHunks(baseText, theirsText, 'theirs')
 
+    // Clusters overlapping hunks from both sides into a single conflict
+    // region. Both lists are sorted by baseStart from extractHunks. We build
+    // each cluster by repeatedly absorbing hunks whose base range touches
+    // the cluster's accumulated range, from either side, until no more do.
     const chunks: ConflictChunk[] = []
-    const usedTheirs = new Set<number>()
+    let oi = 0
+    let ti = 0
+    while (oi < oursHunks.length || ti < theirsHunks.length) {
+        const o = oursHunks[oi]
+        const t = theirsHunks[ti]
+        let baseStart: number
+        let baseEnd: number
+        const clusterOurs: Hunk[] = []
+        const clusterTheirs: Hunk[] = []
 
-    for (const ours of oursHunks) {
-        const conflictingTheirsIdx = theirsHunks.findIndex(
-            (t, i) => !usedTheirs.has(i) && overlaps(ours, t)
+        if (!t || (o && o.baseStart <= t.baseStart)) {
+            clusterOurs.push(o)
+            baseStart = o.baseStart
+            baseEnd = o.baseEnd
+            oi++
+        } else {
+            clusterTheirs.push(t)
+            baseStart = t.baseStart
+            baseEnd = t.baseEnd
+            ti++
+        }
+
+        for (;;) {
+            let extended = false
+            while (
+                oi < oursHunks.length &&
+                overlapsRange(oursHunks[oi], baseStart, baseEnd)
+            ) {
+                const h = oursHunks[oi++]
+                clusterOurs.push(h)
+                baseEnd = Math.max(baseEnd, h.baseEnd)
+                extended = true
+            }
+            while (
+                ti < theirsHunks.length &&
+                overlapsRange(theirsHunks[ti], baseStart, baseEnd)
+            ) {
+                const h = theirsHunks[ti++]
+                clusterTheirs.push(h)
+                baseEnd = Math.max(baseEnd, h.baseEnd)
+                extended = true
+            }
+            if (!extended) break
+        }
+
+        const oursLines = reconstructSide(
+            clusterOurs,
+            baseStart,
+            baseEnd,
+            baseLines
         )
+        const theirsLines = reconstructSide(
+            clusterTheirs,
+            baseStart,
+            baseEnd,
+            baseLines
+        )
+        const chunkBaseLines = baseLines.slice(baseStart, baseEnd)
 
-        if (conflictingTheirsIdx !== -1) {
-            const theirs = theirsHunks[conflictingTheirsIdx]
-            usedTheirs.add(conflictingTheirsIdx)
+        const oursChanged = !arraysEqual(oursLines, chunkBaseLines)
+        const theirsChanged = !arraysEqual(theirsLines, chunkBaseLines)
 
-            // Both sides agree on the same output — not a real conflict
-            if (arraysEqual(ours.newLines, theirs.newLines)) {
+        if (oursChanged && theirsChanged) {
+            if (arraysEqual(oursLines, theirsLines)) {
                 chunks.push({
                     type: 'non-conflicting',
-                    oursLines: ours.newLines,
-                    baseLines: baseLines.slice(
-                        Math.min(ours.baseStart, theirs.baseStart),
-                        Math.max(ours.baseEnd, theirs.baseEnd)
-                    ),
-                    theirsLines: theirs.newLines,
-                    baseStartLine: Math.min(ours.baseStart, theirs.baseStart),
-                    baseEndLine: Math.max(ours.baseEnd, theirs.baseEnd),
+                    oursLines,
+                    baseLines: chunkBaseLines,
+                    theirsLines,
+                    baseStartLine: baseStart,
+                    baseEndLine: baseEnd,
                     winner: 'ours',
                 })
             } else {
                 chunks.push({
                     type: 'conflict',
-                    oursLines: ours.newLines,
-                    baseLines: baseLines.slice(
-                        Math.min(ours.baseStart, theirs.baseStart),
-                        Math.max(ours.baseEnd, theirs.baseEnd)
-                    ),
-                    theirsLines: theirs.newLines,
-                    baseStartLine: Math.min(ours.baseStart, theirs.baseStart),
-                    baseEndLine: Math.max(ours.baseEnd, theirs.baseEnd),
+                    oursLines,
+                    baseLines: chunkBaseLines,
+                    theirsLines,
+                    baseStartLine: baseStart,
+                    baseEndLine: baseEnd,
                 })
             }
+        } else if (oursChanged) {
+            chunks.push({
+                type: 'non-conflicting',
+                oursLines,
+                baseLines: chunkBaseLines,
+                theirsLines,
+                baseStartLine: baseStart,
+                baseEndLine: baseEnd,
+                winner: 'ours',
+            })
         } else {
             chunks.push({
                 type: 'non-conflicting',
-                oursLines: ours.newLines,
-                baseLines: baseLines.slice(ours.baseStart, ours.baseEnd),
-                theirsLines: baseLines.slice(ours.baseStart, ours.baseEnd),
-                baseStartLine: ours.baseStart,
-                baseEndLine: ours.baseEnd,
-                winner: 'ours',
+                oursLines,
+                baseLines: chunkBaseLines,
+                theirsLines,
+                baseStartLine: baseStart,
+                baseEndLine: baseEnd,
+                winner: 'theirs',
             })
         }
     }
 
-    // Remaining theirs hunks that didn't conflict with any ours hunk
-    theirsHunks.forEach((theirs, i) => {
-        if (usedTheirs.has(i)) return
-        chunks.push({
-            type: 'non-conflicting',
-            oursLines: baseLines.slice(theirs.baseStart, theirs.baseEnd),
-            baseLines: baseLines.slice(theirs.baseStart, theirs.baseEnd),
-            theirsLines: theirs.newLines,
-            baseStartLine: theirs.baseStart,
-            baseEndLine: theirs.baseEnd,
-            winner: 'theirs',
-        })
-    })
+    return coalesceChunks(chunks, baseLines)
+}
 
-    const sorted = chunks.sort((a, b) => a.baseStartLine - b.baseStartLine)
-    return coalesceChunks(sorted, baseLines)
+function overlapsRange(h: Hunk, baseStart: number, baseEnd: number): boolean {
+    // Treat insertions at exactly baseEnd as touching/overlapping so they get
+    // pulled into the cluster (otherwise we'd leave them as a separate chunk
+    // immediately adjacent, and coalesceChunks would merge them anyway).
+    if (h.baseStart === h.baseEnd) {
+        return h.baseStart >= baseStart && h.baseStart <= baseEnd
+    }
+    return h.baseStart < baseEnd && baseStart < h.baseEnd
 }
 
 /**
