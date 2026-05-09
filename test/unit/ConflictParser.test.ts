@@ -22,7 +22,8 @@ describe('ConflictParser.parse', () => {
         expect(chunks[0].theirsLines).toEqual(['b'])
         expect(chunks[0].baseStartLine).toBe(1)
         expect(chunks[0].baseEndLine).toBe(2)
-        expect(chunks[0].resolvedWith).toBeUndefined()
+        expect(chunks[0].oursDecision).toBeUndefined()
+        expect(chunks[0].theirsDecision).toBeUndefined()
     })
 
     it('detects a non-conflicting change from theirs only', () => {

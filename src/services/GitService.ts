@@ -1,3 +1,5 @@
+import { existsSync } from 'fs'
+import { join } from 'path'
 import * as vscode from 'vscode'
 import type { MergeChange } from '../types'
 
@@ -114,6 +116,30 @@ export class GitService implements vscode.Disposable {
         const repo = this.gitAPI.repositories[0]
         if (!repo) return []
         return this.toMergeChanges(repo)
+    }
+
+    /**
+     * True when the repo containing `uri` (or the first repo, if no uri given)
+     * is in the middle of a `git rebase`. During rebase git swaps the meaning
+     * of stage 2/3: HEAD is the upstream commit and MERGE_HEAD-equivalents are
+     * the commits being replayed. Callers use this to swap "ours"/"theirs"
+     * pane assignments to match user intuition (and IntelliJ).
+     */
+    isRebasing(uri?: vscode.Uri): boolean {
+        const repo = this.repoFor(uri) ?? this.gitAPI?.repositories[0]
+        if (!repo) return false
+        const gitDir = join(repo.rootUri.fsPath, '.git')
+        return (
+            existsSync(join(gitDir, 'rebase-merge')) ||
+            existsSync(join(gitDir, 'rebase-apply'))
+        )
+    }
+
+    private repoFor(uri?: vscode.Uri): Repository | undefined {
+        if (!uri || !this.gitAPI) return undefined
+        return this.gitAPI.repositories.find((r) =>
+            uri.fsPath.startsWith(r.rootUri.fsPath)
+        )
     }
 
     async getFileContents(uri: vscode.Uri, stage: 1 | 2 | 3): Promise<string> {

@@ -1,25 +1,29 @@
 import * as monaco from 'monaco-editor'
 import { useEffect, useMemo, useRef } from 'react'
-import type { ConflictChunk } from '../../src/protocol'
+import {
+    isChunkResolved,
+    type ConflictChunk,
+    type SideDecision,
+} from '../../src/protocol'
 import type { ChunkLineMap } from './buildDisplayDocuments'
 import type { Pane } from './lineMapping'
 
 interface Props {
     chunks: ConflictChunk[]
     chunkMaps: ChunkLineMap[]
-    /** Editor on the left side of this gutter. */
     leftEditor: monaco.editor.IStandaloneCodeEditor | null
-    /** Editor on the right side of this gutter. */
     rightEditor: monaco.editor.IStandaloneCodeEditor | null
-    /** Which pane the left editor represents. */
     leftPane: Pane
-    /** Which pane the right editor represents. */
     rightPane: Pane
     width: number
     height: number
-    /** Which arrow direction the accept button should display ("<<" or ">>"). */
+    /** Which side ('ours' or 'theirs') this gutter's buttons control. */
     side: 'left' | 'right'
-    onAccept?: (chunkIndex: number) => void
+    onDecision?: (
+        chunkIndex: number,
+        side: 'ours' | 'theirs',
+        decision: SideDecision
+    ) => void
 }
 
 const FILL_CONFLICT = 'rgba(188,63,60,0.22)'
@@ -28,15 +32,19 @@ const FILL_NONCONFLICT = 'rgba(98,178,98,0.18)'
 const STROKE_NONCONFLICT = 'rgba(98,178,98,0.4)'
 const FILL_RESOLVED = 'rgba(78,201,176,0.18)'
 const STROKE_RESOLVED = 'rgba(78,201,176,0.45)'
+const FILL_PARTIAL = 'rgba(188,63,60,0.12)'
+const STROKE_PARTIAL = 'rgba(220,80,70,0.35)'
 
-const BTN_W = 26
+const BTN_W = 18
 const BTN_H = 16
+const BTN_GAP = 2
 const BTN_PAD = 3
 
 interface ChunkVisual {
     chunkIndex: number
     isConflict: boolean
     isResolved: boolean
+    isPartial: boolean
 }
 
 export function GutterConnector({
@@ -49,24 +57,32 @@ export function GutterConnector({
     width,
     height,
     side,
-    onAccept,
+    onDecision,
 }: Props) {
     const pathRefs = useRef<(SVGPathElement | null)[]>([])
-    const buttonRefs = useRef<(SVGGElement | null)[]>([])
+    const buttonGroupRefs = useRef<(SVGGElement | null)[]>([])
     const rafRef = useRef<number | null>(null)
+
+    /** Side this gutter's buttons act on — Ours gutter targets ours decisions; Theirs gutter targets theirs. */
+    const decisionSide: 'ours' | 'theirs' = side === 'left' ? 'ours' : 'theirs'
 
     const visuals: ChunkVisual[] = useMemo(
         () =>
-            chunks.map((c, i) => ({
-                chunkIndex: i,
-                isConflict: c.type === 'conflict' && c.resolvedWith === undefined,
-                isResolved: c.resolvedWith !== undefined,
-            })),
+            chunks.map((c, i) => {
+                const resolved = isChunkResolved(c)
+                const anyDecision =
+                    c.oursDecision !== undefined ||
+                    c.theirsDecision !== undefined
+                return {
+                    chunkIndex: i,
+                    isConflict: c.type === 'conflict' && !resolved,
+                    isResolved: resolved,
+                    isPartial: !resolved && anyDecision,
+                }
+            }),
         [chunks]
     )
 
-    // Imperatively recompute every chunk's path `d` and button transform.
-    // Driven by editor scroll events so we don't re-render React on scroll.
     useEffect(() => {
         if (!leftEditor || !rightEditor) return
 
@@ -78,7 +94,7 @@ export function GutterConnector({
             for (let i = 0; i < chunks.length; i++) {
                 const map = chunkMaps[i]
                 const path = pathRefs.current[i]
-                const btn = buttonRefs.current[i]
+                const btn = buttonGroupRefs.current[i]
                 if (!map || !path) continue
 
                 const leftRange = map[leftPane]
@@ -96,7 +112,6 @@ export function GutterConnector({
                     rightEditor.getTopForLineNumber(rightRange.end + 1) -
                     rightScroll
 
-                // Cull if neither side has any portion within the viewport.
                 const leftOnScreen = lBot >= 0 && lTop <= height
                 const rightOnScreen = rBot >= 0 && rTop <= height
                 if (!leftOnScreen && !rightOnScreen) {
@@ -107,10 +122,6 @@ export function GutterConnector({
                 path.style.display = ''
                 if (btn) btn.style.display = ''
 
-                // Clamp far-offscreen ends to a small overhang to avoid drawing
-                // extreme shapes that the browser must rasterize across huge
-                // distances. We still preserve the slope direction near the
-                // viewport.
                 const clamp = (v: number) =>
                     Math.max(-200, Math.min(height + 200, v))
                 const lT = clamp(lTop)
@@ -121,8 +132,6 @@ export function GutterConnector({
                 const w = width
                 const cx = w / 2
 
-                // Cubic-Bezier S-curves on the two horizontal edges produce
-                // IntelliJ's "tongue" trapezoid look.
                 const d =
                     `M0,${lT} ` +
                     `C${cx},${lT} ${cx},${rT} ${w},${rT} ` +
@@ -132,18 +141,12 @@ export function GutterConnector({
                 path.setAttribute('d', d)
 
                 if (btn) {
-                    // Anchor the accept button to the left or right edge of
-                    // the gutter, vertically centered on the *left* (source)
-                    // chunk so it tracks the chunk on its origin pane.
+                    const groupW = BTN_W * 2 + BTN_GAP
                     const btnX =
-                        side === 'left' ? w - BTN_W - BTN_PAD : BTN_PAD
+                        side === 'left' ? w - groupW - BTN_PAD : BTN_PAD
                     const chunkH = Math.max(lBot - lTop, BTN_H)
-                    const btnY =
-                        lTop + Math.max(0, (chunkH - BTN_H) / 2)
-                    btn.setAttribute(
-                        'transform',
-                        `translate(${btnX}, ${btnY})`
-                    )
+                    const btnY = lTop + Math.max(0, (chunkH - BTN_H) / 2)
+                    btn.setAttribute('transform', `translate(${btnX}, ${btnY})`)
                 }
             }
         }
@@ -153,7 +156,6 @@ export function GutterConnector({
             rafRef.current = requestAnimationFrame(update)
         }
 
-        // Initial position.
         schedule()
 
         const dl = leftEditor.onDidScrollChange(schedule)
@@ -187,24 +189,39 @@ export function GutterConnector({
         side,
     ])
 
+    const acceptArrow = side === 'left' ? '»' : '«'
+
     return (
         <svg
             width={width}
             height={height}
             style={{ display: 'block', width: '100%', height: '100%' }}
-            aria-hidden
         >
             {visuals.map((v) => {
                 const fill = v.isResolved
                     ? FILL_RESOLVED
-                    : v.isConflict
-                      ? FILL_CONFLICT
-                      : FILL_NONCONFLICT
-                const stroke = v.isResolved
-                    ? STROKE_RESOLVED
-                    : v.isConflict
-                      ? STROKE_CONFLICT
-                      : STROKE_NONCONFLICT
+                    : v.isPartial
+                      ? FILL_PARTIAL
+                      : v.isConflict
+                        ? FILL_CONFLICT
+                        : FILL_NONCONFLICT
+                const chunk = chunks[v.chunkIndex]
+                const sideDecision =
+                    decisionSide === 'ours'
+                        ? chunk.oursDecision
+                        : chunk.theirsDecision
+                // Show accept/discard on every change (including non-conflicting
+                // ones) until it's fully resolved, matching IntelliJ — this
+                // makes sure no incoming change is silently merged.
+                const showButtons = !v.isResolved
+                // Order buttons so accept is on the inner edge (closer to result).
+                // Left gutter: [X][«]   Right gutter: [»][X]
+                const acceptIdx = side === 'left' ? 1 : 0
+                const discardIdx = side === 'left' ? 0 : 1
+
+                const acceptOpacity = sideDecision === 'discard' ? 0.35 : 1
+                const discardOpacity = sideDecision === 'accept' ? 0.35 : 1
+
                 return (
                     <g key={`chunk-${v.chunkIndex}`}>
                         <path
@@ -213,49 +230,93 @@ export function GutterConnector({
                             }}
                             d=""
                             fill={fill}
-                            stroke={stroke}
-                            strokeWidth={1}
                             style={{ display: 'none' }}
                         />
-                        {v.isConflict && (
+                        {showButtons && (
                             <g
                                 ref={(el) => {
-                                    buttonRefs.current[v.chunkIndex] = el
+                                    buttonGroupRefs.current[v.chunkIndex] = el
                                 }}
-                                style={{ cursor: 'pointer', display: 'none' }}
-                                onClick={() => onAccept?.(v.chunkIndex)}
+                                style={{ display: 'none' }}
                             >
-                                <rect
-                                    width={BTN_W}
-                                    height={BTN_H}
-                                    rx={3}
-                                    fill={
-                                        side === 'left'
-                                            ? 'rgba(188,63,60,0.65)'
-                                            : 'rgba(60,100,188,0.65)'
-                                    }
-                                    stroke={
-                                        side === 'left'
-                                            ? 'rgba(220,80,70,0.95)'
-                                            : 'rgba(70,120,220,0.95)'
-                                    }
-                                    strokeWidth={1}
-                                />
-                                <text
-                                    x={BTN_W / 2}
-                                    y={BTN_H * 0.7}
-                                    textAnchor="middle"
-                                    fontSize={10}
-                                    fontFamily="'SF Mono', Consolas, monospace"
-                                    fontWeight="bold"
-                                    fill="rgba(255,255,255,0.95)"
+                                <g
+                                    transform={`translate(${acceptIdx * (BTN_W + BTN_GAP)}, 0)`}
                                     style={{
-                                        userSelect: 'none',
-                                        pointerEvents: 'none',
+                                        cursor: 'pointer',
+                                        opacity: acceptOpacity,
                                     }}
+                                    onClick={() =>
+                                        onDecision?.(
+                                            v.chunkIndex,
+                                            decisionSide,
+                                            'accept'
+                                        )
+                                    }
                                 >
-                                    {side === 'left' ? '«' : '»'}
-                                </text>
+                                    <title>
+                                        Accept this side&apos;s change
+                                    </title>
+                                    <rect
+                                        width={BTN_W}
+                                        height={BTN_H}
+                                        rx={3}
+                                        fill="transparent"
+                                    />
+                                    <text
+                                        x={BTN_W / 2}
+                                        y={BTN_H * 0.72}
+                                        textAnchor="middle"
+                                        fontSize={11}
+                                        fontFamily="'SF Mono', Consolas, monospace"
+                                        fontWeight="bold"
+                                        fill="rgba(255,255,255,0.95)"
+                                        style={{
+                                            userSelect: 'none',
+                                            pointerEvents: 'none',
+                                        }}
+                                    >
+                                        {acceptArrow}
+                                    </text>
+                                </g>
+                                <g
+                                    transform={`translate(${discardIdx * (BTN_W + BTN_GAP)}, 0)`}
+                                    style={{
+                                        cursor: 'pointer',
+                                        opacity: discardOpacity,
+                                    }}
+                                    onClick={() =>
+                                        onDecision?.(
+                                            v.chunkIndex,
+                                            decisionSide,
+                                            'discard'
+                                        )
+                                    }
+                                >
+                                    <title>
+                                        Discard this side&apos;s change
+                                    </title>
+                                    <rect
+                                        width={BTN_W}
+                                        height={BTN_H}
+                                        rx={3}
+                                        fill="transparent"
+                                    />
+                                    <text
+                                        x={BTN_W / 2}
+                                        y={BTN_H * 0.72}
+                                        textAnchor="middle"
+                                        fontSize={10}
+                                        fontFamily="'SF Mono', Consolas, monospace"
+                                        fontWeight="bold"
+                                        fill="rgba(255,255,255,0.95)"
+                                        style={{
+                                            userSelect: 'none',
+                                            pointerEvents: 'none',
+                                        }}
+                                    >
+                                        x
+                                    </text>
+                                </g>
                             </g>
                         )}
                     </g>

@@ -12,7 +12,9 @@
       "Bash(npx vitest *)",
       "Bash(npx vsce *)",
       "Bash(npm uninstall *)",
-      "Bash(grep -E \"\\\\.\\(json|ts|tsx|html|js\\)$\")"
+      "Bash(grep -E \"\\\\.\\(json|ts|tsx|html|js\\)$\")",
+      "Bash(rtk tsc *)",
+      "Bash(rtk npm *)"
     ]
   }
 }

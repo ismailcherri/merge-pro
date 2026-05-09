@@ -4,6 +4,7 @@ import type {
     ConflictChunk,
     EditorToHost,
     HostToEditor,
+    SideDecision,
 } from '../../src/protocol'
 import { ThreePaneEditor } from './ThreePaneEditor'
 
@@ -95,11 +96,17 @@ export function App() {
         )
     }
 
-    const handleChunkResolved = (
+    const handleChunkDecision = (
         chunkIndex: number,
-        decision: 'ours' | 'theirs'
+        side: 'ours' | 'theirs',
+        decision: SideDecision
     ) => {
-        vscode.postMessage({ type: 'chunkResolved', chunkIndex, decision })
+        vscode.postMessage({
+            type: 'chunkDecision',
+            chunkIndex,
+            side,
+            decision,
+        })
     }
 
     const handleSave = (content: string) => {
@@ -114,7 +121,7 @@ export function App() {
             chunks={editorState.chunks}
             fileName={editorState.fileName}
             language={detectLanguage(editorState.fileName)}
-            onChunkResolved={handleChunkResolved}
+            onChunkDecision={handleChunkDecision}
             onSave={handleSave}
         />
     )

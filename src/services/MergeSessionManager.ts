@@ -1,6 +1,10 @@
 import * as vscode from 'vscode'
 import { parse } from '../parsers/ConflictParser'
-import type { ConflictChunk } from '../protocol'
+import {
+    isChunkResolved,
+    type ConflictChunk,
+    type SideDecision,
+} from '../protocol'
 import type { FileConflictState, SessionState } from '../types'
 import type { GitService } from './GitService'
 
@@ -34,7 +38,6 @@ export class MergeSessionManager implements vscode.Disposable {
         const changes = this.git.getMergeChanges()
         const nextKeys = new Set(changes.map((c) => c.uri.toString()))
 
-        // Remove resolved files
         for (const key of this.fileStates.keys()) {
             if (!nextKeys.has(key)) this.fileStates.delete(key)
         }
@@ -45,24 +48,27 @@ export class MergeSessionManager implements vscode.Disposable {
 
     async refreshFile(uri: vscode.Uri): Promise<void> {
         try {
+            // During rebase, git swaps the meaning of stages 2/3 — HEAD is the
+            // upstream commit, not the user's branch. Swap them back so the
+            // "Ours" pane shows the user's work as IntelliJ does.
+            const rebasing = this.git.isRebasing(uri)
+            const oursStage = rebasing ? 3 : 2
+            const theirsStage = rebasing ? 2 : 3
             const [oursText, baseText, theirsText] = await Promise.all([
-                this.git.getFileContents(uri, 2),
+                this.git.getFileContents(uri, oursStage),
                 this.git.getFileContents(uri, 1),
-                this.git.getFileContents(uri, 3),
+                this.git.getFileContents(uri, theirsStage),
             ])
             const chunks = parse(oursText, baseText, theirsText)
             const existing = this.fileStates.get(uri.toString())
 
-            // Preserve resolved state for chunks that still exist at the same position
             const mergedChunks = chunks.map((chunk, i) => {
                 const prev = existing?.chunks[i]
-                if (
-                    prev?.resolvedWith &&
-                    this.chunkMatchesResolved(chunk, prev)
-                ) {
+                if (prev && this.chunkMatchesPrev(chunk, prev)) {
                     return {
                         ...chunk,
-                        resolvedWith: prev.resolvedWith,
+                        oursDecision: prev.oursDecision,
+                        theirsDecision: prev.theirsDecision,
                         manualLines: prev.manualLines,
                     }
                 }
@@ -73,19 +79,16 @@ export class MergeSessionManager implements vscode.Disposable {
                 uri,
                 fileName: vscode.workspace.asRelativePath(uri),
                 totalChunks: mergedChunks.length,
-                resolvedChunks: mergedChunks.filter(
-                    (c) => c.resolvedWith !== undefined
-                ).length,
+                resolvedChunks: mergedChunks.filter(isChunkResolved).length,
                 chunks: mergedChunks,
             })
         } catch {
-            // File may have been fully resolved — remove it
             this.fileStates.delete(uri.toString())
         }
         this._onDidSessionUpdate.fire(this.getSessionState())
     }
 
-    private chunkMatchesResolved(
+    private chunkMatchesPrev(
         current: ConflictChunk,
         prev: ConflictChunk
     ): boolean {
@@ -96,37 +99,46 @@ export class MergeSessionManager implements vscode.Disposable {
         )
     }
 
-    resolveChunk(
+    setChunkDecision(
         uri: vscode.Uri,
         chunkIndex: number,
-        decision: 'ours' | 'theirs' | 'manual',
-        manualLines?: string[]
+        side: 'ours' | 'theirs',
+        decision: SideDecision
     ): void {
         const state = this.fileStates.get(uri.toString())
-        if (!state || !state.chunks[chunkIndex]) return
+        const chunk = state?.chunks[chunkIndex]
+        if (!state || !chunk) return
+        const updated: ConflictChunk = { ...chunk }
+        if (side === 'ours') updated.oursDecision = decision
+        else updated.theirsDecision = decision
+        // Setting an explicit per-side decision overrides any prior manual edit.
+        delete updated.manualLines
+        state.chunks[chunkIndex] = updated
+        state.resolvedChunks = state.chunks.filter(isChunkResolved).length
+        this._onDidSessionUpdate.fire(this.getSessionState())
+    }
 
-        state.chunks[chunkIndex] = {
-            ...state.chunks[chunkIndex],
-            resolvedWith: decision,
-            manualLines,
-        }
-        state.resolvedChunks = state.chunks.filter(
-            (c) => c.resolvedWith !== undefined
-        ).length
+    setChunkManual(
+        uri: vscode.Uri,
+        chunkIndex: number,
+        manualLines: string[]
+    ): void {
+        const state = this.fileStates.get(uri.toString())
+        const chunk = state?.chunks[chunkIndex]
+        if (!state || !chunk) return
+        state.chunks[chunkIndex] = { ...chunk, manualLines }
+        state.resolvedChunks = state.chunks.filter(isChunkResolved).length
         this._onDidSessionUpdate.fire(this.getSessionState())
     }
 
     batchAccept(uri: vscode.Uri, side: 'ours' | 'theirs'): void {
         const state = this.fileStates.get(uri.toString())
         if (!state) return
-        state.chunks = state.chunks.map((chunk) =>
-            chunk.type === 'conflict' && chunk.resolvedWith === undefined
-                ? { ...chunk, resolvedWith: side }
-                : chunk
-        )
-        state.resolvedChunks = state.chunks.filter(
-            (c) => c.resolvedWith !== undefined
-        ).length
+        state.chunks = state.chunks.map((chunk) => {
+            if (chunk.type !== 'conflict' || isChunkResolved(chunk)) return chunk
+            return acceptOnly(chunk, side)
+        })
+        state.resolvedChunks = state.chunks.filter(isChunkResolved).length
         this._onDidSessionUpdate.fire(this.getSessionState())
     }
 
@@ -134,18 +146,12 @@ export class MergeSessionManager implements vscode.Disposable {
         const state = this.fileStates.get(uri.toString())
         if (!state) return
         state.chunks = state.chunks.map((chunk) => {
-            if (
-                chunk.type === 'non-conflicting' &&
-                chunk.resolvedWith === undefined
-            ) {
-                const side: 'ours' | 'theirs' = chunk.winner ?? 'ours'
-                return { ...chunk, resolvedWith: side }
+            if (chunk.type !== 'non-conflicting' || isChunkResolved(chunk)) {
+                return chunk
             }
-            return chunk
+            return acceptOnly(chunk, chunk.winner ?? 'ours')
         })
-        state.resolvedChunks = state.chunks.filter(
-            (c) => c.resolvedWith !== undefined
-        ).length
+        state.resolvedChunks = state.chunks.filter(isChunkResolved).length
         this._onDidSessionUpdate.fire(this.getSessionState())
     }
 
@@ -159,5 +165,17 @@ export class MergeSessionManager implements vscode.Disposable {
 
     dispose(): void {
         this.disposables.forEach((d) => d.dispose())
+    }
+}
+
+function acceptOnly(
+    chunk: ConflictChunk,
+    side: 'ours' | 'theirs'
+): ConflictChunk {
+    return {
+        ...chunk,
+        oursDecision: side === 'ours' ? 'accept' : 'discard',
+        theirsDecision: side === 'theirs' ? 'accept' : 'discard',
+        manualLines: undefined,
     }
 }

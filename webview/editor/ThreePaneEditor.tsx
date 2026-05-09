@@ -1,6 +1,10 @@
 import * as monaco from 'monaco-editor'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ConflictChunk } from '../../src/protocol'
+import {
+    isChunkResolved,
+    type ConflictChunk,
+    type SideDecision,
+} from '../../src/protocol'
 import { resolveFile } from '../../src/utils/ConflictResolver'
 import { buildDisplayDocuments, ChunkLineMap, LineRange } from './buildDisplayDocuments'
 import { EditorPane, EditorPaneHandle } from './EditorPane'
@@ -15,7 +19,11 @@ interface Props {
     chunks: ConflictChunk[]
     fileName: string
     language: string
-    onChunkResolved: (chunkIndex: number, decision: 'ours' | 'theirs') => void
+    onChunkDecision: (
+        chunkIndex: number,
+        side: 'ours' | 'theirs',
+        decision: SideDecision
+    ) => void
     onSave: (content: string) => void
 }
 
@@ -54,7 +62,7 @@ function buildPaneDecorations(
         const range: LineRange = map[pane]
         if (range.end < range.start) continue // empty range in this pane
 
-        const isResolved = chunk.resolvedWith !== undefined
+        const isResolved = isChunkResolved(chunk)
         let className: string
         if (pane === 'ours') {
             className = isResolved
@@ -87,7 +95,7 @@ export function ThreePaneEditor({
     chunks,
     fileName,
     language,
-    onChunkResolved,
+    onChunkDecision,
     onSave,
 }: Props) {
     const leftRef = useRef<EditorPaneHandle>(null)
@@ -101,7 +109,7 @@ export function ThreePaneEditor({
     const syncingRef = useRef(false)
 
     const conflictChunks = useMemo(
-        () => chunks.filter((c) => c.type === 'conflict' && c.resolvedWith === undefined),
+        () => chunks.filter((c) => c.type === 'conflict' && !isChunkResolved(c)),
         [chunks]
     )
     const totalConflicts = conflictChunks.length
@@ -232,14 +240,20 @@ export function ThreePaneEditor({
         rightRef.current?.getEditor()?.revealLineInCenter(map.theirs.start)
     }
 
-    const handleAccept = (chunkIndex: number, side: 'ours' | 'theirs') => {
-        onChunkResolved(chunkIndex, side)
+    const handleDecision = (
+        chunkIndex: number,
+        side: 'ours' | 'theirs',
+        decision: SideDecision
+    ) => {
+        onChunkDecision(chunkIndex, side, decision)
     }
 
     const autoResolve = () => {
         chunks.forEach((c, i) => {
-            if (c.type === 'non-conflicting' && c.resolvedWith === undefined) {
-                onChunkResolved(i, c.winner ?? 'ours')
+            if (c.type === 'non-conflicting' && !isChunkResolved(c)) {
+                const winner = c.winner ?? 'ours'
+                onChunkDecision(i, 'ours', winner === 'ours' ? 'accept' : 'discard')
+                onChunkDecision(i, 'theirs', winner === 'theirs' ? 'accept' : 'discard')
             }
         })
     }
@@ -359,7 +373,7 @@ export function ThreePaneEditor({
                         width={GUTTER_WIDTH}
                         height={paneHeight}
                         side="left"
-                        onAccept={(i) => handleAccept(i, 'ours')}
+                        onDecision={handleDecision}
                     />
                 </div>
                 <div
@@ -402,7 +416,7 @@ export function ThreePaneEditor({
                         width={GUTTER_WIDTH}
                         height={paneHeight}
                         side="right"
-                        onAccept={(i) => handleAccept(i, 'theirs')}
+                        onDecision={handleDecision}
                     />
                 </div>
                 <div

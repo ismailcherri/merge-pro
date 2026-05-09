@@ -63,14 +63,18 @@ export class MergeEditorProvider implements vscode.Disposable {
                             `MergePro: Failed to load merge data — ${String(err)}`
                         )
                     }
-                } else if (msg.type === 'chunkResolved') {
-                    this.session.resolveChunk(uri, msg.chunkIndex, msg.decision)
-                    this.sendChunkUpdate(panel, uri)
-                } else if (msg.type === 'chunkResolvedManual') {
-                    this.session.resolveChunk(
+                } else if (msg.type === 'chunkDecision') {
+                    this.session.setChunkDecision(
                         uri,
                         msg.chunkIndex,
-                        'manual',
+                        msg.side,
+                        msg.decision
+                    )
+                    this.sendChunkUpdate(panel, uri)
+                } else if (msg.type === 'chunkResolvedManual') {
+                    this.session.setChunkManual(
+                        uri,
+                        msg.chunkIndex,
                         msg.lines
                     )
                     this.sendChunkUpdate(panel, uri)
@@ -109,10 +113,13 @@ export class MergeEditorProvider implements vscode.Disposable {
         panel: vscode.WebviewPanel,
         uri: vscode.Uri
     ): Promise<void> {
+        const rebasing = this.git.isRebasing(uri)
+        const oursStage = rebasing ? 3 : 2
+        const theirsStage = rebasing ? 2 : 3
         const [oursText, baseText, theirsText] = await Promise.all([
-            this.git.getFileContents(uri, 2),
+            this.git.getFileContents(uri, oursStage),
             this.git.getFileContents(uri, 1),
-            this.git.getFileContents(uri, 3),
+            this.git.getFileContents(uri, theirsStage),
         ])
         const chunks = this.session.getChunks(uri)
         const msg: HostToEditor = {

@@ -1,4 +1,4 @@
-import type { ConflictChunk } from '../../src/protocol'
+import { resolvedChunkLines, type ConflictChunk } from '../../src/protocol'
 
 function splitLines(text: string): string[] {
     const lines = text.replace(/\r\n/g, '\n').split('\n')
@@ -28,9 +28,10 @@ export interface DisplayDocuments {
 }
 
 function resolveChunkLines(chunk: ConflictChunk): string[] {
-    if (chunk.resolvedWith === 'ours') return chunk.oursLines
-    if (chunk.resolvedWith === 'theirs') return chunk.theirsLines
-    if (chunk.resolvedWith === 'manual' && chunk.manualLines) return chunk.manualLines
+    if (chunk.manualLines !== undefined) return chunk.manualLines
+    if (chunk.oursDecision !== undefined || chunk.theirsDecision !== undefined) {
+        return resolvedChunkLines(chunk)
+    }
     if (chunk.type === 'non-conflicting') {
         if (chunk.winner === 'ours') return chunk.oursLines
         if (chunk.winner === 'theirs') return chunk.theirsLines

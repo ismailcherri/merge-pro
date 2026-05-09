@@ -150,5 +150,70 @@ export function parse(
         })
     })
 
-    return chunks.sort((a, b) => a.baseStartLine - b.baseStartLine)
+    const sorted = chunks.sort((a, b) => a.baseStartLine - b.baseStartLine)
+    return coalesceChunks(sorted, baseLines)
+}
+
+/**
+ * Merge consecutive chunks whose base ranges touch or overlap so that a single
+ * logical conflict region (as git would surround with one set of conflict
+ * markers) is represented by one chunk. Without this, minimal line-diff
+ * fragments a conflict into several small chunks and the gutter highlighting
+ * misses lines that should be part of the conflict.
+ */
+function coalesceChunks(
+    chunks: ConflictChunk[],
+    baseLines: string[]
+): ConflictChunk[] {
+    if (chunks.length <= 1) return chunks
+    const out: ConflictChunk[] = []
+    let cur = chunks[0]
+    for (let i = 1; i < chunks.length; i++) {
+        const next = chunks[i]
+        if (next.baseStartLine <= cur.baseEndLine) {
+            cur = mergeChunks(cur, next, baseLines)
+        } else {
+            out.push(cur)
+            cur = next
+        }
+    }
+    out.push(cur)
+    return out
+}
+
+function mergeChunks(
+    a: ConflictChunk,
+    b: ConflictChunk,
+    baseLines: string[]
+): ConflictChunk {
+    const baseStart = Math.min(a.baseStartLine, b.baseStartLine)
+    const baseEnd = Math.max(a.baseEndLine, b.baseEndLine)
+    // Bridge: any unchanged base lines between a and b. Negative when ranges
+    // overlap — in that case we contribute no bridge content.
+    const bridge =
+        b.baseStartLine > a.baseEndLine
+            ? baseLines.slice(a.baseEndLine, b.baseStartLine)
+            : []
+    const oursLines = [...a.oursLines, ...bridge, ...b.oursLines]
+    const theirsLines = [...a.theirsLines, ...bridge, ...b.theirsLines]
+    const mergedBase = baseLines.slice(baseStart, baseEnd)
+    const isConflict = a.type === 'conflict' || b.type === 'conflict'
+    const merged: ConflictChunk = {
+        type: isConflict ? 'conflict' : 'non-conflicting',
+        oursLines,
+        baseLines: mergedBase,
+        theirsLines,
+        baseStartLine: baseStart,
+        baseEndLine: baseEnd,
+    }
+    if (!isConflict) {
+        // Both non-conflicting: pick a consistent winner. If they disagree,
+        // fall back to ours (arbitrary but harmless — auto-resolve will set
+        // both decisions explicitly later).
+        merged.winner =
+            a.winner && b.winner && a.winner !== b.winner
+                ? 'ours'
+                : (a.winner ?? b.winner ?? 'ours')
+    }
+    return merged
 }

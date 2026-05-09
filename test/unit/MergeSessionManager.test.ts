@@ -33,6 +33,7 @@ function makeGitService(changes: Array<{ fsPath: string }> = []) {
             }))
         ),
         getFileContents: vi.fn().mockResolvedValue(''),
+        isRebasing: vi.fn(() => false),
         _emitter: emitter,
     }
 }
@@ -72,7 +73,7 @@ describe('MergeSessionManager', () => {
         expect(state.files[0].resolvedChunks).toBe(0)
     })
 
-    it('resolveChunk marks a chunk as resolved', async () => {
+    it('setChunkDecision marks a chunk as resolved once both sides decided', async () => {
         const git = makeGitService([{ fsPath: '/repo/foo.ts' }])
         git.getFileContents
             .mockResolvedValueOnce('a\nb\nc')
@@ -86,9 +87,10 @@ describe('MergeSessionManager', () => {
             fsPath: '/repo/foo.ts',
             toString: () => '/repo/foo.ts',
         } as never
-        mgr.resolveChunk(uri, 0, 'ours')
-
-        const state = mgr.getSessionState()
-        expect(state.files[0].resolvedChunks).toBe(1)
+        mgr.setChunkDecision(uri, 0, 'ours', 'accept')
+        // One side decided is not yet resolved.
+        expect(mgr.getSessionState().files[0].resolvedChunks).toBe(0)
+        mgr.setChunkDecision(uri, 0, 'theirs', 'discard')
+        expect(mgr.getSessionState().files[0].resolvedChunks).toBe(1)
     })
 })

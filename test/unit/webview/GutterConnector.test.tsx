@@ -24,7 +24,7 @@ const trivialMap: ChunkLineMap = {
 }
 
 describe('GutterConnector', () => {
-    it('renders one path per chunk plus accept button for conflicts', () => {
+    it('renders accept+discard buttons for every unresolved chunk', () => {
         const chunks = [makeChunk('conflict'), makeChunk('non-conflicting')]
         const chunkMaps = [trivialMap, trivialMap]
         const { container } = render(
@@ -42,13 +42,13 @@ describe('GutterConnector', () => {
         )
         const paths = container.querySelectorAll('path')
         expect(paths.length).toBe(2)
-        // Only the conflict chunk renders an accept button (a <g> with rect+text).
-        const buttons = container.querySelectorAll('g > g > rect')
-        expect(buttons.length).toBe(1)
+        // Two buttons (accept + discard) per unresolved chunk → 4 total.
+        const buttons = container.querySelectorAll('g > g > g > rect')
+        expect(buttons.length).toBe(4)
     })
 
-    it('fires onAccept with chunk index when button clicked', () => {
-        const onAccept = vi.fn()
+    it('fires onDecision with accept when accept button clicked', () => {
+        const onDecision = vi.fn()
         const chunks = [makeChunk('conflict')]
         const { container } = render(
             <GutterConnector
@@ -61,11 +61,34 @@ describe('GutterConnector', () => {
                 width={48}
                 height={300}
                 side="left"
-                onAccept={onAccept}
+                onDecision={onDecision}
             />
         )
-        const buttonGroup = container.querySelector('g > g')!
-        fireEvent.click(buttonGroup)
-        expect(onAccept).toHaveBeenCalledWith(0)
+        // DOM order in render: accept first, then discard.
+        const buttons = container.querySelectorAll('g > g > g')
+        fireEvent.click(buttons[0])
+        expect(onDecision).toHaveBeenCalledWith(0, 'ours', 'accept')
+    })
+
+    it('fires onDecision with discard when discard button clicked', () => {
+        const onDecision = vi.fn()
+        const chunks = [makeChunk('conflict')]
+        const { container } = render(
+            <GutterConnector
+                chunks={chunks}
+                chunkMaps={[trivialMap]}
+                leftEditor={null}
+                rightEditor={null}
+                leftPane="result"
+                rightPane="theirs"
+                width={48}
+                height={300}
+                side="right"
+                onDecision={onDecision}
+            />
+        )
+        const buttons = container.querySelectorAll('g > g > g')
+        fireEvent.click(buttons[1])
+        expect(onDecision).toHaveBeenCalledWith(0, 'theirs', 'discard')
     })
 })
