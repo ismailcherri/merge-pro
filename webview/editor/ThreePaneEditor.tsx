@@ -44,6 +44,14 @@ if (typeof document !== 'undefined') {
     .merge-theirs-resolved       { background: rgba(78,201,176,0.12); }
     .merge-result-unresolved     { background: rgba(160,100,40,0.18); }
     .merge-result-resolved       { background: rgba(78,201,176,0.12); }
+    /* Thin marker showing where the *other* side inserted lines that don't
+       exist here. Color matches the gutter connector for that chunk type. */
+    .merge-empty-conflict-top    { border-top: 2px solid rgba(220,80,70,0.7); }
+    .merge-empty-conflict-bottom { border-bottom: 2px solid rgba(220,80,70,0.7); }
+    .merge-empty-nonconflict-top    { border-top: 2px solid rgba(98,178,98,0.65); }
+    .merge-empty-nonconflict-bottom { border-bottom: 2px solid rgba(98,178,98,0.65); }
+    .merge-empty-partial-top     { border-top: 2px solid rgba(220,80,70,0.45); }
+    .merge-empty-partial-bottom  { border-bottom: 2px solid rgba(220,80,70,0.45); }
         `
         document.head.appendChild(style)
     }
@@ -60,9 +68,43 @@ function buildPaneDecorations(
         const map = chunkMaps[i]
         if (!map) continue
         const range: LineRange = map[pane]
-        if (range.end < range.start) continue // empty range in this pane
-
         const isResolved = isChunkResolved(chunk)
+
+        if (range.end < range.start) {
+            // Empty range in this pane: the other side has lines inserted
+            // that don't exist here. Draw a thin horizontal marker between
+            // the two surrounding lines, colored to match the gutter
+            // connector for this chunk type.
+            if (isResolved) continue
+            const anyDecision =
+                chunk.oursDecision !== undefined ||
+                chunk.theirsDecision !== undefined
+            const variant =
+                chunk.type === 'conflict'
+                    ? anyDecision
+                        ? 'partial'
+                        : 'conflict'
+                    : 'nonconflict'
+            if (range.start > 1) {
+                out.push({
+                    range: new monaco.Range(range.start - 1, 1, range.start - 1, 1),
+                    options: {
+                        isWholeLine: true,
+                        className: `merge-empty-${variant}-bottom`,
+                    },
+                })
+            } else {
+                out.push({
+                    range: new monaco.Range(1, 1, 1, 1),
+                    options: {
+                        isWholeLine: true,
+                        className: `merge-empty-${variant}-top`,
+                    },
+                })
+            }
+            continue
+        }
+
         let className: string
         if (pane === 'ours') {
             className = isResolved

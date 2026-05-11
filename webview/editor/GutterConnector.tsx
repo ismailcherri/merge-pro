@@ -28,18 +28,20 @@ interface Props {
 }
 
 const FILL_CONFLICT = 'rgba(188,63,60,0.22)'
-const STROKE_CONFLICT = 'rgba(220,80,70,0.55)'
 const FILL_NONCONFLICT = 'rgba(98,178,98,0.18)'
-const STROKE_NONCONFLICT = 'rgba(98,178,98,0.4)'
 const FILL_RESOLVED = 'rgba(78,201,176,0.18)'
-const STROKE_RESOLVED = 'rgba(78,201,176,0.45)'
 const FILL_PARTIAL = 'rgba(188,63,60,0.12)'
-const STROKE_PARTIAL = 'rgba(220,80,70,0.35)'
 
 const BTN_W = 18
 const BTN_H = 16
 const BTN_GAP = 2
 const BTN_PAD = 3
+
+// When a chunk has zero lines on one side (pure insertion/deletion), the
+// connector would collapse to a single point on that side. Splay it out
+// slightly so the wedge stays visible and lines up with the thin in-editor
+// marker drawn at the insertion row.
+const MIN_TIP_HEIGHT = 2
 
 interface ChunkVisual {
     chunkIndex: number
@@ -101,17 +103,31 @@ export function GutterConnector({
                 const leftRange = map[leftPane]
                 const rightRange = map[rightPane]
 
-                const lTop =
+                let lTop =
                     leftEditor.getTopForLineNumber(leftRange.start) - leftScroll
-                const lBot =
+                let lBot =
                     leftEditor.getTopForLineNumber(leftRange.end + 1) -
                     leftScroll
-                const rTop =
+                let rTop =
                     rightEditor.getTopForLineNumber(rightRange.start) -
                     rightScroll
-                const rBot =
+                let rBot =
                     rightEditor.getTopForLineNumber(rightRange.end + 1) -
                     rightScroll
+
+                // Splay zero-height tips so the connector visibly tapers
+                // into the thin in-editor marker rather than collapsing to
+                // a point.
+                if (lBot - lTop < MIN_TIP_HEIGHT) {
+                    const half = MIN_TIP_HEIGHT / 2
+                    lTop -= half
+                    lBot += half
+                }
+                if (rBot - rTop < MIN_TIP_HEIGHT) {
+                    const half = MIN_TIP_HEIGHT / 2
+                    rTop -= half
+                    rBot += half
+                }
 
                 const leftOnScreen = lBot >= 0 && lTop <= height
                 const rightOnScreen = rBot >= 0 && rTop <= height
