@@ -11,6 +11,7 @@ import { DecisionButtons } from './DecisionButtons'
 import { EditorPane, EditorPaneHandle } from './EditorPane'
 import { GutterConnector } from './GutterConnector'
 import { LineNumberStrip } from './LineNumberStrip'
+import { MagicWandColumn } from './MagicWandColumn'
 import { mapLine, Pane } from './lineMapping'
 import { Toolbar } from './Toolbar'
 
@@ -29,18 +30,21 @@ interface Props {
         decision: SideDecision
     ) => void
     onAutoResolve: () => void
+    onMagicResolve: () => void
+    onMagicResolveChunk: (chunkIndex: number) => void
     onUndo: () => void
     onRedo: () => void
     onSave: (content: string) => void
 }
 
 // Layout columns (left → right):
-//   ours code | OLN | BTN_L | CONN_L | RLN_L | result code | RLN_R | CONN_R | BTN_R | TLN | theirs code
+//   ours code | OLN | BTN_L | CONN_L | RLN_L | WAND | result code | RLN_R | CONN_R | BTN_R | TLN | theirs code
 const LINENO_WIDTH = 36
 const BTN_COL_WIDTH = 42
 const CONN_WIDTH = 32
+const WAND_WIDTH = 22
 const FIXED_WIDTH =
-    LINENO_WIDTH * 4 + BTN_COL_WIDTH * 2 + CONN_WIDTH * 2
+    LINENO_WIDTH * 4 + BTN_COL_WIDTH * 2 + CONN_WIDTH * 2 + WAND_WIDTH
 const PANE_WIDTH = `calc((100% - ${FIXED_WIDTH}px) / 3)`
 
 if (typeof document !== 'undefined') {
@@ -154,6 +158,8 @@ export function ThreePaneEditor({
     canRedo,
     onChunkDecision,
     onAutoResolve,
+    onMagicResolve,
+    onMagicResolveChunk,
     onUndo,
     onRedo,
     onSave,
@@ -353,6 +359,7 @@ export function ThreePaneEditor({
                 onPrev={() => navigateConflict(-1)}
                 onNext={() => navigateConflict(1)}
                 onAutoResolve={onAutoResolve}
+                onMagicResolve={onMagicResolve}
                 onUndo={onUndo}
                 onRedo={onRedo}
                 onSave={() => {
@@ -383,7 +390,7 @@ export function ThreePaneEditor({
                 <div style={{ width: CONN_WIDTH }} />
                 <div
                     style={{
-                        width: `calc(${PANE_WIDTH} + ${LINENO_WIDTH * 2}px)`,
+                        width: `calc(${PANE_WIDTH} + ${LINENO_WIDTH * 2 + WAND_WIDTH}px)`,
                         padding: '3px 8px',
                         color: '#4ec9b0',
                         background: 'rgba(78,201,176,0.04)',
@@ -472,6 +479,18 @@ export function ThreePaneEditor({
                         width={LINENO_WIDTH}
                         height={paneHeight}
                         align="right"
+                    />
+                </div>
+
+                {/* 5b. Magic-wand column: per-chunk auto-merge action */}
+                <div style={fixedColStyle(WAND_WIDTH)}>
+                    <MagicWandColumn
+                        chunks={chunks}
+                        chunkMaps={chunkMaps}
+                        editor={centerEditor}
+                        width={WAND_WIDTH}
+                        height={paneHeight}
+                        onMagicChunk={onMagicResolveChunk}
                     />
                 </div>
 

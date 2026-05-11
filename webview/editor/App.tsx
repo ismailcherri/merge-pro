@@ -125,6 +125,10 @@ export function App() {
     }
 
     const handleAutoResolve = () => vscode.postMessage({ type: 'autoResolve' })
+    const handleMagicResolve = () =>
+        vscode.postMessage({ type: 'magicResolve' })
+    const handleMagicResolveChunk = (chunkIndex: number) =>
+        vscode.postMessage({ type: 'magicResolveChunk', chunkIndex })
     const handleUndo = () => vscode.postMessage({ type: 'undo' })
     const handleRedo = () => vscode.postMessage({ type: 'redo' })
 
@@ -140,6 +144,8 @@ export function App() {
             canRedo={editorState.canRedo}
             onChunkDecision={handleChunkDecision}
             onAutoResolve={handleAutoResolve}
+            onMagicResolve={handleMagicResolve}
+            onMagicResolveChunk={handleMagicResolveChunk}
             onUndo={handleUndo}
             onRedo={handleRedo}
             onSave={handleSave}

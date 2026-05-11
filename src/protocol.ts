@@ -130,6 +130,8 @@ export type EditorToHost =
       }
     | { type: 'chunkResolvedManual'; chunkIndex: number; lines: string[] }
     | { type: 'autoResolve' }
+    | { type: 'magicResolve' }
+    | { type: 'magicResolveChunk'; chunkIndex: number }
     | { type: 'undo' }
     | { type: 'redo' }
     | { type: 'saveFile'; uri: string; content: string }

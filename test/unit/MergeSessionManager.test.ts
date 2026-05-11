@@ -265,6 +265,191 @@ describe('MergeSessionManager', () => {
             expect(mgr.getChunks(uriA)[0].oursDecision).toBe('accept')
         })
 
+        it('magicResolve sets manualLines on a conflict it can merge', async () => {
+            // Inject a synthesized conflict chunk whose two sides are
+            // line-disjoint vs base so magicMerge succeeds. This shape is
+            // hard to coax out of the parser fixture-by-fixture, so we
+            // bypass the parser and exercise the gate + execution path.
+            const mgr = new MergeSessionManager(makeGitService() as never)
+            const internal = mgr as unknown as {
+                fileStates: Map<string, unknown>
+            }
+            internal.fileStates.set('/repo/foo.ts', {
+                uri,
+                fileName: 'foo.ts',
+                totalChunks: 1,
+                resolvedChunks: 0,
+                chunks: [
+                    {
+                        type: 'conflict',
+                        baseLines: ['b', 'c'],
+                        oursLines: ['X', 'c'],
+                        theirsLines: ['b', 'Y'],
+                        baseStartLine: 0,
+                        baseEndLine: 2,
+                    },
+                ],
+            })
+
+            mgr.magicResolve(uri)
+            expect(mgr.getChunks(uri)[0].manualLines).toEqual(['X', 'Y'])
+            expect(mgr.canUndo(uri)).toBe(true)
+        })
+
+        it('magicResolve skips non-conflicting chunks (those belong to Auto-Resolve)', async () => {
+            const git = makeGitService([{ fsPath: '/repo/foo.ts' }])
+            // Only ours changed → non-conflicting chunk. Magic should NOT
+            // touch it; that's Auto-Resolve's job.
+            git.getFileContents
+                .mockResolvedValueOnce('a\nX\nc')
+                .mockResolvedValueOnce('a\nb\nc')
+                .mockResolvedValueOnce('a\nb\nc')
+            const mgr = new MergeSessionManager(git as never)
+            await mgr.refreshAll()
+            expect(mgr.getChunks(uri)[0].type).toBe('non-conflicting')
+
+            mgr.magicResolve(uri)
+            expect(mgr.getChunks(uri)[0].manualLines).toBeUndefined()
+            expect(mgr.canUndo(uri)).toBe(false)
+        })
+
+        it('magicResolve is a no-op on a true conflict it cannot merge', async () => {
+            const git = makeGitService([{ fsPath: '/repo/foo.ts' }])
+            // Both sides edit line 2 differently → unmergeable conflict.
+            git.getFileContents
+                .mockResolvedValueOnce('a\nX\nc')
+                .mockResolvedValueOnce('a\nb\nc')
+                .mockResolvedValueOnce('a\nY\nc')
+            const mgr = new MergeSessionManager(git as never)
+            await mgr.refreshAll()
+            expect(mgr.getChunks(uri)[0].type).toBe('conflict')
+
+            mgr.magicResolve(uri)
+            expect(mgr.getChunks(uri)[0].manualLines).toBeUndefined()
+            expect(mgr.getSessionState().files[0].resolvedChunks).toBe(0)
+            // No state change → no undo entry pushed.
+            expect(mgr.canUndo(uri)).toBe(false)
+        })
+
+        it('magicResolve creates a single undo entry covering all merges', async () => {
+            // Two synthesized conflict chunks, both magic-mergeable.
+            const mgr = new MergeSessionManager(makeGitService() as never)
+            const internal = mgr as unknown as {
+                fileStates: Map<string, unknown>
+            }
+            const mkConflict = (baseStart: number) => ({
+                type: 'conflict' as const,
+                baseLines: ['b', 'c'],
+                oursLines: ['X', 'c'],
+                theirsLines: ['b', 'Y'],
+                baseStartLine: baseStart,
+                baseEndLine: baseStart + 2,
+            })
+            internal.fileStates.set('/repo/foo.ts', {
+                uri,
+                fileName: 'foo.ts',
+                totalChunks: 2,
+                resolvedChunks: 0,
+                chunks: [mkConflict(0), mkConflict(10)],
+            })
+
+            mgr.magicResolve(uri)
+            expect(mgr.getSessionState().files[0].resolvedChunks).toBe(2)
+
+            mgr.undo(uri)
+            expect(mgr.getSessionState().files[0].resolvedChunks).toBe(0)
+            expect(mgr.canUndo(uri)).toBe(false)
+        })
+
+        it('magicResolveChunk merges only the requested chunk', async () => {
+            const mgr = new MergeSessionManager(makeGitService() as never)
+            const internal = mgr as unknown as {
+                fileStates: Map<string, unknown>
+            }
+            const mkConflict = (baseStart: number) => ({
+                type: 'conflict' as const,
+                baseLines: ['b', 'c'],
+                oursLines: ['X', 'c'],
+                theirsLines: ['b', 'Y'],
+                baseStartLine: baseStart,
+                baseEndLine: baseStart + 2,
+            })
+            internal.fileStates.set('/repo/foo.ts', {
+                uri,
+                fileName: 'foo.ts',
+                totalChunks: 2,
+                resolvedChunks: 0,
+                chunks: [mkConflict(0), mkConflict(10)],
+            })
+
+            mgr.magicResolveChunk(uri, 0)
+            expect(mgr.getChunks(uri)[0].manualLines).toEqual(['X', 'Y'])
+            expect(mgr.getChunks(uri)[1].manualLines).toBeUndefined()
+            expect(mgr.getSessionState().files[0].resolvedChunks).toBe(1)
+            expect(mgr.canUndo(uri)).toBe(true)
+        })
+
+        it('magicResolveChunk is a no-op on an unmergeable chunk', async () => {
+            const git = makeGitService([{ fsPath: '/repo/foo.ts' }])
+            // Both sides change line 2 differently → real conflict.
+            git.getFileContents
+                .mockResolvedValueOnce('a\nX\nc')
+                .mockResolvedValueOnce('a\nb\nc')
+                .mockResolvedValueOnce('a\nY\nc')
+            const mgr = new MergeSessionManager(git as never)
+            await mgr.refreshAll()
+            expect(mgr.getChunks(uri)[0].type).toBe('conflict')
+
+            mgr.magicResolveChunk(uri, 0)
+            expect(mgr.getChunks(uri)[0].manualLines).toBeUndefined()
+            expect(mgr.canUndo(uri)).toBe(false)
+        })
+
+        it('magicResolveChunk is a no-op on non-conflicting chunks (Auto-Resolve territory)', async () => {
+            const git = makeGitService([{ fsPath: '/repo/foo.ts' }])
+            git.getFileContents
+                .mockResolvedValueOnce('a\nX\nc')
+                .mockResolvedValueOnce('a\nb\nc')
+                .mockResolvedValueOnce('a\nb\nc')
+            const mgr = new MergeSessionManager(git as never)
+            await mgr.refreshAll()
+            expect(mgr.getChunks(uri)[0].type).toBe('non-conflicting')
+
+            mgr.magicResolveChunk(uri, 0)
+            expect(mgr.getChunks(uri)[0].manualLines).toBeUndefined()
+            expect(mgr.canUndo(uri)).toBe(false)
+        })
+
+        it('magicResolve leaves already-resolved chunks untouched', async () => {
+            const mgr = new MergeSessionManager(makeGitService() as never)
+            const internal = mgr as unknown as {
+                fileStates: Map<string, unknown>
+            }
+            internal.fileStates.set('/repo/foo.ts', {
+                uri,
+                fileName: 'foo.ts',
+                totalChunks: 1,
+                resolvedChunks: 1,
+                chunks: [
+                    {
+                        type: 'conflict',
+                        baseLines: ['b', 'c'],
+                        oursLines: ['X', 'c'],
+                        theirsLines: ['b', 'Y'],
+                        baseStartLine: 0,
+                        baseEndLine: 2,
+                        manualLines: ['custom-resolution'],
+                    },
+                ],
+            })
+
+            mgr.magicResolve(uri)
+            // The pre-resolved chunk keeps the user's manual content.
+            expect(mgr.getChunks(uri)[0].manualLines).toEqual([
+                'custom-resolution',
+            ])
+        })
+
         it('caps the undo stack length', async () => {
             const { mgr } = await setupConflict()
             // 60 mutations on a 50-entry cap. Oldest entries should be dropped.

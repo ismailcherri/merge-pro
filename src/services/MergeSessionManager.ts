@@ -7,6 +7,7 @@ import {
 } from '../protocol'
 import type { FileConflictState, SessionState } from '../types'
 import type { GitService } from './GitService'
+import { magicMerge } from '../utils/magicMerge'
 
 /** Snapshot of just the mutable decision metadata for every chunk in a file. */
 type DecisionSnapshot = Array<
@@ -158,6 +159,69 @@ export class MergeSessionManager implements vscode.Disposable {
             if (chunk.type !== 'conflict' || isChunkResolved(chunk)) return chunk
             return acceptOnly(chunk, side)
         })
+        state.resolvedChunks = state.chunks.filter(isChunkResolved).length
+        this._onDidSessionUpdate.fire(this.getSessionState())
+    }
+
+    /**
+     * Magic-merge a single chunk if its two sides can be combined safely.
+     * No-op if the chunk is already resolved or magicMerge returns null.
+     */
+    magicResolveChunk(uri: vscode.Uri, chunkIndex: number): void {
+        const state = this.fileStates.get(uri.toString())
+        const chunk = state?.chunks[chunkIndex]
+        if (!state || !chunk || isChunkResolved(chunk)) return
+        // The wand is conflict-only. Non-conflicting chunks belong to
+        // Auto-Resolve and should not also count as "magic".
+        if (chunk.type !== 'conflict') return
+        const merged = magicMerge(
+            chunk.baseLines,
+            chunk.oursLines,
+            chunk.theirsLines
+        )
+        if (merged === null) return
+        this.pushUndoSnapshot(uri, state)
+        state.chunks[chunkIndex] = { ...chunk, manualLines: merged }
+        state.resolvedChunks = state.chunks.filter(isChunkResolved).length
+        this._onDidSessionUpdate.fire(this.getSessionState())
+    }
+
+    /**
+     * Attempt to auto-resolve every still-unresolved conflict chunk by
+     * running a line-level three-way merge inside the chunk. Chunks where
+     * the two sides' edits are line-disjoint (or identical) get `manualLines`
+     * set with the woven result. Chunks that genuinely conflict are left
+     * untouched. All successful resolutions land as a single undo entry.
+     */
+    magicResolve(uri: vscode.Uri): void {
+        const state = this.fileStates.get(uri.toString())
+        if (!state) return
+        // Snapshot before touching anything so a single undo reverts the
+        // whole wand pass — even if no chunk ends up changing, the entry is
+        // a cheap noop and we drop it below in that case.
+        const before = this.snapshotDecisions(state.chunks)
+        let changed = false
+        state.chunks = state.chunks.map((chunk) => {
+            if (isChunkResolved(chunk)) return chunk
+            // Conflict-only: Auto-Resolve owns non-conflicting chunks.
+            if (chunk.type !== 'conflict') return chunk
+            const merged = magicMerge(
+                chunk.baseLines,
+                chunk.oursLines,
+                chunk.theirsLines
+            )
+            if (merged === null) return chunk
+            changed = true
+            return { ...chunk, manualLines: merged }
+        })
+        if (!changed) return
+        // Push the pre-mutation snapshot now that we know something changed.
+        const key = uri.toString()
+        const stack = this.undoStacks.get(key) ?? []
+        stack.push(before)
+        if (stack.length > MAX_HISTORY) stack.shift()
+        this.undoStacks.set(key, stack)
+        this.redoStacks.delete(key)
         state.resolvedChunks = state.chunks.filter(isChunkResolved).length
         this._onDidSessionUpdate.fire(this.getSessionState())
     }

@@ -81,6 +81,12 @@ export class MergeEditorProvider implements vscode.Disposable {
                 } else if (msg.type === 'autoResolve') {
                     this.session.autoResolveNonConflicting(uri)
                     this.sendChunkUpdate(panel, uri)
+                } else if (msg.type === 'magicResolve') {
+                    this.session.magicResolve(uri)
+                    this.sendChunkUpdate(panel, uri)
+                } else if (msg.type === 'magicResolveChunk') {
+                    this.session.magicResolveChunk(uri, msg.chunkIndex)
+                    this.sendChunkUpdate(panel, uri)
                 } else if (msg.type === 'undo') {
                     this.session.undo(uri)
                     this.sendChunkUpdate(panel, uri)

@@ -9,6 +9,7 @@ interface Props {
     onPrev: () => void
     onNext: () => void
     onAutoResolve: () => void
+    onMagicResolve: () => void
     onUndo: () => void
     onRedo: () => void
     onSave: () => void
@@ -33,6 +34,7 @@ export function Toolbar({
     onPrev,
     onNext,
     onAutoResolve,
+    onMagicResolve,
     onUndo,
     onRedo,
     onSave,
@@ -109,6 +111,13 @@ export function Toolbar({
                 title="Redo (⇧⌘Z / Ctrl+Y)"
             >
                 ↷ Redo
+            </button>
+            <button
+                style={btn}
+                onClick={onMagicResolve}
+                title="Magic merge — auto-resolve conflicts whose changes are line-disjoint"
+            >
+                ✨ Magic
             </button>
             <button style={btn} onClick={onAutoResolve}>
                 ✦ Auto-Resolve
