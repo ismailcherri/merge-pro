@@ -223,6 +223,7 @@ export function ThreePaneEditor({
                     monaco.editor.EditorOption.lineHeight
                 )
                 const srcScroll = srcEditor.getScrollTop()
+                const srcScrollLeft = srcEditor.getScrollLeft()
                 const srcLineFloat = srcScroll / Math.max(lineHeight, 1)
                 const srcLineInt = Math.max(1, Math.floor(srcLineFloat) + 1)
                 const fraction = srcLineFloat - Math.floor(srcLineFloat)
@@ -246,6 +247,13 @@ export function ThreePaneEditor({
                     )
                     tgtEditor.setScrollTop(
                         tgtScroll,
+                        monaco.editor.ScrollType.Immediate
+                    )
+                    // Horizontal scroll has no line-mapping concept — mirror
+                    // 1:1. Monaco clamps to each pane's own max scroll width,
+                    // so shorter panes simply stop at their own end.
+                    tgtEditor.setScrollLeft(
+                        srcScrollLeft,
                         monaco.editor.ScrollType.Immediate
                     )
                 }
