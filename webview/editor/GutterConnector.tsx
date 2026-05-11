@@ -1,11 +1,6 @@
 import * as monaco from 'monaco-editor'
 import { useEffect, useMemo, useRef } from 'react'
-import {
-    isChunkResolved,
-    singleChangedSide,
-    type ConflictChunk,
-    type SideDecision,
-} from '../../src/protocol'
+import { isChunkResolved, type ConflictChunk } from '../../src/protocol'
 import type { ChunkLineMap } from './buildDisplayDocuments'
 import type { Pane } from './lineMapping'
 
@@ -18,24 +13,12 @@ interface Props {
     rightPane: Pane
     width: number
     height: number
-    /** Which side ('ours' or 'theirs') this gutter's buttons control. */
-    side: 'left' | 'right'
-    onDecision?: (
-        chunkIndex: number,
-        side: 'ours' | 'theirs',
-        decision: SideDecision
-    ) => void
 }
 
 const FILL_CONFLICT = 'rgba(188,63,60,0.22)'
 const FILL_NONCONFLICT = 'rgba(98,178,98,0.18)'
 const FILL_RESOLVED = 'rgba(78,201,176,0.18)'
 const FILL_PARTIAL = 'rgba(188,63,60,0.12)'
-
-const BTN_W = 18
-const BTN_H = 16
-const BTN_GAP = 2
-const BTN_PAD = 3
 
 // When a chunk has zero lines on one side (pure insertion/deletion), the
 // connector would collapse to a single point on that side. Splay it out
@@ -59,15 +42,9 @@ export function GutterConnector({
     rightPane,
     width,
     height,
-    side,
-    onDecision,
 }: Props) {
     const pathRefs = useRef<(SVGPathElement | null)[]>([])
-    const buttonGroupRefs = useRef<(SVGGElement | null)[]>([])
     const rafRef = useRef<number | null>(null)
-
-    /** Side this gutter's buttons act on — Ours gutter targets ours decisions; Theirs gutter targets theirs. */
-    const decisionSide: 'ours' | 'theirs' = side === 'left' ? 'ours' : 'theirs'
 
     const visuals: ChunkVisual[] = useMemo(
         () =>
@@ -97,7 +74,6 @@ export function GutterConnector({
             for (let i = 0; i < chunks.length; i++) {
                 const map = chunkMaps[i]
                 const path = pathRefs.current[i]
-                const btn = buttonGroupRefs.current[i]
                 if (!map || !path) continue
 
                 const leftRange = map[leftPane]
@@ -115,9 +91,6 @@ export function GutterConnector({
                     rightEditor.getTopForLineNumber(rightRange.end + 1) -
                     rightScroll
 
-                // Splay zero-height tips so the connector visibly tapers
-                // into the thin in-editor marker rather than collapsing to
-                // a point.
                 if (lBot - lTop < MIN_TIP_HEIGHT) {
                     const half = MIN_TIP_HEIGHT / 2
                     lTop -= half
@@ -133,11 +106,9 @@ export function GutterConnector({
                 const rightOnScreen = rBot >= 0 && rTop <= height
                 if (!leftOnScreen && !rightOnScreen) {
                     path.style.display = 'none'
-                    if (btn) btn.style.display = 'none'
                     continue
                 }
                 path.style.display = ''
-                if (btn) btn.style.display = ''
 
                 const clamp = (v: number) =>
                     Math.max(-200, Math.min(height + 200, v))
@@ -156,15 +127,6 @@ export function GutterConnector({
                     `C${cx},${rB} ${cx},${lB} 0,${lB} ` +
                     `Z`
                 path.setAttribute('d', d)
-
-                if (btn) {
-                    const groupW = BTN_W * 2 + BTN_GAP
-                    const btnX =
-                        side === 'left' ? w - groupW - BTN_PAD : BTN_PAD
-                    const chunkH = Math.max(lBot - lTop, BTN_H)
-                    const btnY = lTop + Math.max(0, (chunkH - BTN_H) / 2)
-                    btn.setAttribute('transform', `translate(${btnX}, ${btnY})`)
-                }
             }
         }
 
@@ -194,19 +156,7 @@ export function GutterConnector({
             dll.dispose()
             drl.dispose()
         }
-    }, [
-        chunks,
-        chunkMaps,
-        leftEditor,
-        rightEditor,
-        leftPane,
-        rightPane,
-        width,
-        height,
-        side,
-    ])
-
-    const acceptArrow = side === 'left' ? '»' : '«'
+    }, [chunks, chunkMaps, leftEditor, rightEditor, leftPane, rightPane, width, height])
 
     return (
         <svg
@@ -222,123 +172,16 @@ export function GutterConnector({
                       : v.isConflict
                         ? FILL_CONFLICT
                         : FILL_NONCONFLICT
-                const chunk = chunks[v.chunkIndex]
-                const sideDecision =
-                    decisionSide === 'ours'
-                        ? chunk.oursDecision
-                        : chunk.theirsDecision
-                // Hide buttons on the side that didn't change — there's
-                // nothing for the user to accept or discard there. Matches
-                // IntelliJ's one-sided change behavior.
-                const single = singleChangedSide(chunk)
-                const sideHasChange = single === null || single === decisionSide
-                const showButtons = !v.isResolved && sideHasChange
-                // Order buttons so accept is on the inner edge (closer to result).
-                // Left gutter: [X][«]   Right gutter: [»][X]
-                const acceptIdx = side === 'left' ? 1 : 0
-                const discardIdx = side === 'left' ? 0 : 1
-
-                const acceptOpacity = sideDecision === 'discard' ? 0.35 : 1
-                const discardOpacity = sideDecision === 'accept' ? 0.35 : 1
-
                 return (
-                    <g key={`chunk-${v.chunkIndex}`}>
-                        <path
-                            ref={(el) => {
-                                pathRefs.current[v.chunkIndex] = el
-                            }}
-                            d=""
-                            fill={fill}
-                            style={{ display: 'none' }}
-                        />
-                        {showButtons && (
-                            <g
-                                ref={(el) => {
-                                    buttonGroupRefs.current[v.chunkIndex] = el
-                                }}
-                                style={{ display: 'none' }}
-                            >
-                                <g
-                                    transform={`translate(${acceptIdx * (BTN_W + BTN_GAP)}, 0)`}
-                                    style={{
-                                        cursor: 'pointer',
-                                        opacity: acceptOpacity,
-                                    }}
-                                    onClick={() =>
-                                        onDecision?.(
-                                            v.chunkIndex,
-                                            decisionSide,
-                                            'accept'
-                                        )
-                                    }
-                                >
-                                    <title>
-                                        Accept this side&apos;s change
-                                    </title>
-                                    <rect
-                                        width={BTN_W}
-                                        height={BTN_H}
-                                        rx={3}
-                                        fill="transparent"
-                                    />
-                                    <text
-                                        x={BTN_W / 2}
-                                        y={BTN_H * 0.72}
-                                        textAnchor="middle"
-                                        fontSize={11}
-                                        fontFamily="'SF Mono', Consolas, monospace"
-                                        fontWeight="bold"
-                                        fill="rgba(255,255,255,0.95)"
-                                        style={{
-                                            userSelect: 'none',
-                                            pointerEvents: 'none',
-                                        }}
-                                    >
-                                        {acceptArrow}
-                                    </text>
-                                </g>
-                                <g
-                                    transform={`translate(${discardIdx * (BTN_W + BTN_GAP)}, 0)`}
-                                    style={{
-                                        cursor: 'pointer',
-                                        opacity: discardOpacity,
-                                    }}
-                                    onClick={() =>
-                                        onDecision?.(
-                                            v.chunkIndex,
-                                            decisionSide,
-                                            'discard'
-                                        )
-                                    }
-                                >
-                                    <title>
-                                        Discard this side&apos;s change
-                                    </title>
-                                    <rect
-                                        width={BTN_W}
-                                        height={BTN_H}
-                                        rx={3}
-                                        fill="transparent"
-                                    />
-                                    <text
-                                        x={BTN_W / 2}
-                                        y={BTN_H * 0.72}
-                                        textAnchor="middle"
-                                        fontSize={10}
-                                        fontFamily="'SF Mono', Consolas, monospace"
-                                        fontWeight="bold"
-                                        fill="rgba(255,255,255,0.95)"
-                                        style={{
-                                            userSelect: 'none',
-                                            pointerEvents: 'none',
-                                        }}
-                                    >
-                                        x
-                                    </text>
-                                </g>
-                            </g>
-                        )}
-                    </g>
+                    <path
+                        key={`chunk-${v.chunkIndex}`}
+                        ref={(el) => {
+                            pathRefs.current[v.chunkIndex] = el
+                        }}
+                        d=""
+                        fill={fill}
+                        style={{ display: 'none' }}
+                    />
                 )
             })}
         </svg>

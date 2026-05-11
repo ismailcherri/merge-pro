@@ -7,8 +7,10 @@ import {
 } from '../../src/protocol'
 import { resolveFile } from '../../src/utils/ConflictResolver'
 import { buildDisplayDocuments, ChunkLineMap, LineRange } from './buildDisplayDocuments'
+import { DecisionButtons } from './DecisionButtons'
 import { EditorPane, EditorPaneHandle } from './EditorPane'
 import { GutterConnector } from './GutterConnector'
+import { LineNumberStrip } from './LineNumberStrip'
 import { mapLine, Pane } from './lineMapping'
 import { Toolbar } from './Toolbar'
 
@@ -32,8 +34,14 @@ interface Props {
     onSave: (content: string) => void
 }
 
-const GUTTER_WIDTH = 48
-const PANE_WIDTH = `calc((100% - ${GUTTER_WIDTH * 2 + 4}px) / 3)`
+// Layout columns (left → right):
+//   ours code | OLN | BTN_L | CONN_L | RLN_L | result code | RLN_R | CONN_R | BTN_R | TLN | theirs code
+const LINENO_WIDTH = 36
+const BTN_COL_WIDTH = 42
+const CONN_WIDTH = 32
+const FIXED_WIDTH =
+    LINENO_WIDTH * 4 + BTN_COL_WIDTH * 2 + CONN_WIDTH * 2
+const PANE_WIDTH = `calc((100% - ${FIXED_WIDTH}px) / 3)`
 
 if (typeof document !== 'undefined') {
     const styleId = 'mergepro-decoration-styles'
@@ -364,7 +372,7 @@ export function ThreePaneEditor({
             >
                 <div
                     style={{
-                        width: PANE_WIDTH,
+                        width: `calc(${PANE_WIDTH} + ${LINENO_WIDTH + BTN_COL_WIDTH}px)`,
                         padding: '3px 8px',
                         color: '#e07070',
                         background: 'rgba(188,63,60,0.08)',
@@ -372,10 +380,10 @@ export function ThreePaneEditor({
                 >
                     Ours
                 </div>
-                <div style={{ width: GUTTER_WIDTH }} />
+                <div style={{ width: CONN_WIDTH }} />
                 <div
                     style={{
-                        width: PANE_WIDTH,
+                        width: `calc(${PANE_WIDTH} + ${LINENO_WIDTH * 2}px)`,
                         padding: '3px 8px',
                         color: '#4ec9b0',
                         background: 'rgba(78,201,176,0.04)',
@@ -384,10 +392,10 @@ export function ThreePaneEditor({
                 >
                     Result
                 </div>
-                <div style={{ width: GUTTER_WIDTH }} />
+                <div style={{ width: CONN_WIDTH }} />
                 <div
                     style={{
-                        width: PANE_WIDTH,
+                        width: `calc(${PANE_WIDTH} + ${LINENO_WIDTH + BTN_COL_WIDTH}px)`,
                         padding: '3px 8px',
                         color: '#7090e0',
                         background: 'rgba(60,100,188,0.08)',
@@ -407,15 +415,8 @@ export function ThreePaneEditor({
                     overflow: 'hidden',
                 }}
             >
-                <div
-                    style={{
-                        width: PANE_WIDTH,
-                        height: '100%',
-                        overflow: 'hidden',
-                        flexShrink: 0,
-                        position: 'relative',
-                    }}
-                >
+                {/* 1. Ours code */}
+                <div style={paneStyle(PANE_WIDTH)}>
                     <EditorPane
                         ref={leftRef}
                         value={ours}
@@ -425,17 +426,33 @@ export function ThreePaneEditor({
                         onMount={handleEditorMounted}
                     />
                 </div>
-                <div
-                    style={{
-                        width: GUTTER_WIDTH,
-                        flexShrink: 0,
-                        flexGrow: 0,
-                        position: 'relative',
-                        overflow: 'hidden',
-                        borderLeft: '1px solid rgba(255,255,255,0.06)',
-                        borderRight: '1px solid rgba(255,255,255,0.06)',
-                    }}
-                >
+
+                {/* 2. Ours line numbers (right-aligned, abutting the buttons) */}
+                <div style={fixedColStyle(LINENO_WIDTH)}>
+                    <LineNumberStrip
+                        editor={leftEditor}
+                        width={LINENO_WIDTH}
+                        height={paneHeight}
+                        align="right"
+                    />
+                </div>
+
+                {/* 3. Ours decision buttons (×, ») */}
+                <div style={fixedColStyle(BTN_COL_WIDTH, true)}>
+                    <DecisionButtons
+                        chunks={chunks}
+                        chunkMaps={chunkMaps}
+                        editor={leftEditor}
+                        side="ours"
+                        pane="ours"
+                        width={BTN_COL_WIDTH}
+                        height={paneHeight}
+                        onDecision={handleDecision}
+                    />
+                </div>
+
+                {/* 4. Left connector (ours ↔ result) */}
+                <div style={fixedColStyle(CONN_WIDTH)}>
                     <GutterConnector
                         chunks={chunks}
                         chunkMaps={chunkMaps}
@@ -443,21 +460,23 @@ export function ThreePaneEditor({
                         rightEditor={centerEditor}
                         leftPane="ours"
                         rightPane="result"
-                        width={GUTTER_WIDTH}
+                        width={CONN_WIDTH}
                         height={paneHeight}
-                        side="left"
-                        onDecision={handleDecision}
                     />
                 </div>
-                <div
-                    style={{
-                        width: PANE_WIDTH,
-                        height: '100%',
-                        overflow: 'hidden',
-                        flexShrink: 0,
-                        position: 'relative',
-                    }}
-                >
+
+                {/* 5. Result line numbers (left side) */}
+                <div style={fixedColStyle(LINENO_WIDTH)}>
+                    <LineNumberStrip
+                        editor={centerEditor}
+                        width={LINENO_WIDTH}
+                        height={paneHeight}
+                        align="right"
+                    />
+                </div>
+
+                {/* 6. Result code */}
+                <div style={paneStyle(PANE_WIDTH)}>
                     <EditorPane
                         ref={centerRef}
                         value={result}
@@ -468,17 +487,19 @@ export function ThreePaneEditor({
                         onMount={handleEditorMounted}
                     />
                 </div>
-                <div
-                    style={{
-                        width: GUTTER_WIDTH,
-                        flexShrink: 0,
-                        flexGrow: 0,
-                        position: 'relative',
-                        overflow: 'hidden',
-                        borderLeft: '1px solid rgba(255,255,255,0.06)',
-                        borderRight: '1px solid rgba(255,255,255,0.06)',
-                    }}
-                >
+
+                {/* 7. Result line numbers (right side) */}
+                <div style={fixedColStyle(LINENO_WIDTH)}>
+                    <LineNumberStrip
+                        editor={centerEditor}
+                        width={LINENO_WIDTH}
+                        height={paneHeight}
+                        align="left"
+                    />
+                </div>
+
+                {/* 8. Right connector (result ↔ theirs) */}
+                <div style={fixedColStyle(CONN_WIDTH)}>
                     <GutterConnector
                         chunks={chunks}
                         chunkMaps={chunkMaps}
@@ -486,21 +507,37 @@ export function ThreePaneEditor({
                         rightEditor={rightEditor}
                         leftPane="result"
                         rightPane="theirs"
-                        width={GUTTER_WIDTH}
+                        width={CONN_WIDTH}
                         height={paneHeight}
-                        side="right"
+                    />
+                </div>
+
+                {/* 9. Theirs decision buttons («, ×) */}
+                <div style={fixedColStyle(BTN_COL_WIDTH, true)}>
+                    <DecisionButtons
+                        chunks={chunks}
+                        chunkMaps={chunkMaps}
+                        editor={rightEditor}
+                        side="theirs"
+                        pane="theirs"
+                        width={BTN_COL_WIDTH}
+                        height={paneHeight}
                         onDecision={handleDecision}
                     />
                 </div>
-                <div
-                    style={{
-                        width: PANE_WIDTH,
-                        height: '100%',
-                        overflow: 'hidden',
-                        flexShrink: 0,
-                        position: 'relative',
-                    }}
-                >
+
+                {/* 10. Theirs line numbers (left-aligned, abutting the buttons) */}
+                <div style={fixedColStyle(LINENO_WIDTH)}>
+                    <LineNumberStrip
+                        editor={rightEditor}
+                        width={LINENO_WIDTH}
+                        height={paneHeight}
+                        align="left"
+                    />
+                </div>
+
+                {/* 11. Theirs code */}
+                <div style={paneStyle(PANE_WIDTH)}>
                     <EditorPane
                         ref={rightRef}
                         value={theirs}
@@ -513,4 +550,30 @@ export function ThreePaneEditor({
             </div>
         </div>
     )
+}
+
+function paneStyle(width: string) {
+    return {
+        width,
+        height: '100%',
+        overflow: 'hidden',
+        flexShrink: 0,
+        position: 'relative' as const,
+    }
+}
+
+function fixedColStyle(width: number, withBorders = false) {
+    return {
+        width,
+        flexShrink: 0,
+        flexGrow: 0,
+        position: 'relative' as const,
+        overflow: 'hidden',
+        ...(withBorders
+            ? {
+                  borderLeft: '1px solid rgba(255,255,255,0.06)',
+                  borderRight: '1px solid rgba(255,255,255,0.06)',
+              }
+            : {}),
+    }
 }
