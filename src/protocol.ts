@@ -110,8 +110,15 @@ export type HostToEditor =
           chunks: ConflictChunk[]
           fileName: string
           uri: string
+          canUndo: boolean
+          canRedo: boolean
       }
-    | { type: 'chunkUpdate'; chunks: ConflictChunk[] }
+    | {
+          type: 'chunkUpdate'
+          chunks: ConflictChunk[]
+          canUndo: boolean
+          canRedo: boolean
+      }
 
 export type EditorToHost =
     | { type: 'ready' }
@@ -122,4 +129,7 @@ export type EditorToHost =
           decision: SideDecision
       }
     | { type: 'chunkResolvedManual'; chunkIndex: number; lines: string[] }
+    | { type: 'autoResolve' }
+    | { type: 'undo' }
+    | { type: 'redo' }
     | { type: 'saveFile'; uri: string; content: string }

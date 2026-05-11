@@ -78,6 +78,15 @@ export class MergeEditorProvider implements vscode.Disposable {
                         msg.lines
                     )
                     this.sendChunkUpdate(panel, uri)
+                } else if (msg.type === 'autoResolve') {
+                    this.session.autoResolveNonConflicting(uri)
+                    this.sendChunkUpdate(panel, uri)
+                } else if (msg.type === 'undo') {
+                    this.session.undo(uri)
+                    this.sendChunkUpdate(panel, uri)
+                } else if (msg.type === 'redo') {
+                    this.session.redo(uri)
+                    this.sendChunkUpdate(panel, uri)
                 } else if (msg.type === 'saveFile') {
                     try {
                         const hasUnresolved = /^<{7}( |\t)/m.test(msg.content)
@@ -130,13 +139,20 @@ export class MergeEditorProvider implements vscode.Disposable {
             chunks,
             fileName: vscode.workspace.asRelativePath(uri),
             uri: uri.toString(),
+            canUndo: this.session.canUndo(uri),
+            canRedo: this.session.canRedo(uri),
         }
         panel.webview.postMessage(msg)
     }
 
     private sendChunkUpdate(panel: vscode.WebviewPanel, uri: vscode.Uri): void {
         const chunks = this.session.getChunks(uri)
-        const msg: HostToEditor = { type: 'chunkUpdate', chunks }
+        const msg: HostToEditor = {
+            type: 'chunkUpdate',
+            chunks,
+            canUndo: this.session.canUndo(uri),
+            canRedo: this.session.canRedo(uri),
+        }
         panel.webview.postMessage(msg)
     }
 

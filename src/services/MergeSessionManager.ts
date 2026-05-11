@@ -8,6 +8,13 @@ import {
 import type { FileConflictState, SessionState } from '../types'
 import type { GitService } from './GitService'
 
+/** Snapshot of just the mutable decision metadata for every chunk in a file. */
+type DecisionSnapshot = Array<
+    Pick<ConflictChunk, 'oursDecision' | 'theirsDecision' | 'manualLines'>
+>
+
+const MAX_HISTORY = 50
+
 export class MergeSessionManager implements vscode.Disposable {
     private readonly _onDidSessionUpdate =
         new vscode.EventEmitter<SessionState>()
@@ -17,6 +24,8 @@ export class MergeSessionManager implements vscode.Disposable {
         string,
         FileConflictState & { chunks: ConflictChunk[] }
     >()
+    private undoStacks = new Map<string, DecisionSnapshot[]>()
+    private redoStacks = new Map<string, DecisionSnapshot[]>()
     private readonly disposables: vscode.Disposable[] = []
 
     constructor(private readonly git: GitService) {
@@ -39,7 +48,11 @@ export class MergeSessionManager implements vscode.Disposable {
         const nextKeys = new Set(changes.map((c) => c.uri.toString()))
 
         for (const key of this.fileStates.keys()) {
-            if (!nextKeys.has(key)) this.fileStates.delete(key)
+            if (!nextKeys.has(key)) {
+                this.fileStates.delete(key)
+                this.undoStacks.delete(key)
+                this.redoStacks.delete(key)
+            }
         }
 
         await Promise.all(changes.map((c) => this.refreshFile(c.uri)))
@@ -61,6 +74,10 @@ export class MergeSessionManager implements vscode.Disposable {
             ])
             const chunks = parse(oursText, baseText, theirsText)
             const existing = this.fileStates.get(uri.toString())
+            // Re-parsing can reshape the chunk array; old snapshots may not
+            // line up positionally. Drop history to keep undo predictable.
+            this.undoStacks.delete(uri.toString())
+            this.redoStacks.delete(uri.toString())
 
             const mergedChunks = chunks.map((chunk, i) => {
                 const prev = existing?.chunks[i]
@@ -108,6 +125,7 @@ export class MergeSessionManager implements vscode.Disposable {
         const state = this.fileStates.get(uri.toString())
         const chunk = state?.chunks[chunkIndex]
         if (!state || !chunk) return
+        this.pushUndoSnapshot(uri, state)
         const updated: ConflictChunk = { ...chunk }
         if (side === 'ours') updated.oursDecision = decision
         else updated.theirsDecision = decision
@@ -126,6 +144,7 @@ export class MergeSessionManager implements vscode.Disposable {
         const state = this.fileStates.get(uri.toString())
         const chunk = state?.chunks[chunkIndex]
         if (!state || !chunk) return
+        this.pushUndoSnapshot(uri, state)
         state.chunks[chunkIndex] = { ...chunk, manualLines }
         state.resolvedChunks = state.chunks.filter(isChunkResolved).length
         this._onDidSessionUpdate.fire(this.getSessionState())
@@ -134,6 +153,7 @@ export class MergeSessionManager implements vscode.Disposable {
     batchAccept(uri: vscode.Uri, side: 'ours' | 'theirs'): void {
         const state = this.fileStates.get(uri.toString())
         if (!state) return
+        this.pushUndoSnapshot(uri, state)
         state.chunks = state.chunks.map((chunk) => {
             if (chunk.type !== 'conflict' || isChunkResolved(chunk)) return chunk
             return acceptOnly(chunk, side)
@@ -145,6 +165,7 @@ export class MergeSessionManager implements vscode.Disposable {
     autoResolveNonConflicting(uri: vscode.Uri): void {
         const state = this.fileStates.get(uri.toString())
         if (!state) return
+        this.pushUndoSnapshot(uri, state)
         state.chunks = state.chunks.map((chunk) => {
             if (chunk.type !== 'non-conflicting' || isChunkResolved(chunk)) {
                 return chunk
@@ -153,6 +174,90 @@ export class MergeSessionManager implements vscode.Disposable {
         })
         state.resolvedChunks = state.chunks.filter(isChunkResolved).length
         this._onDidSessionUpdate.fire(this.getSessionState())
+    }
+
+    /**
+     * Snapshot the per-chunk decision metadata before a mutation so it can be
+     * undone. Any pending redo history is dropped — the standard editor-style
+     * behavior where a new action invalidates the redo branch.
+     */
+    private pushUndoSnapshot(
+        uri: vscode.Uri,
+        state: FileConflictState & { chunks: ConflictChunk[] }
+    ): void {
+        const key = uri.toString()
+        const snapshot = this.snapshotDecisions(state.chunks)
+        const stack = this.undoStacks.get(key) ?? []
+        stack.push(snapshot)
+        if (stack.length > MAX_HISTORY) stack.shift()
+        this.undoStacks.set(key, stack)
+        this.redoStacks.delete(key)
+    }
+
+    private snapshotDecisions(chunks: ConflictChunk[]): DecisionSnapshot {
+        return chunks.map((c) => ({
+            oursDecision: c.oursDecision,
+            theirsDecision: c.theirsDecision,
+            manualLines: c.manualLines,
+        }))
+    }
+
+    private applySnapshot(
+        state: FileConflictState & { chunks: ConflictChunk[] },
+        snapshot: DecisionSnapshot
+    ): void {
+        // Snapshot length always matches state.chunks.length because history
+        // is dropped whenever chunks are re-parsed from disk.
+        state.chunks = state.chunks.map((chunk, i) => {
+            const s = snapshot[i]
+            const next: ConflictChunk = {
+                ...chunk,
+                oursDecision: s?.oursDecision,
+                theirsDecision: s?.theirsDecision,
+                manualLines: s?.manualLines,
+            }
+            if (next.oursDecision === undefined) delete next.oursDecision
+            if (next.theirsDecision === undefined) delete next.theirsDecision
+            if (next.manualLines === undefined) delete next.manualLines
+            return next
+        })
+        state.resolvedChunks = state.chunks.filter(isChunkResolved).length
+    }
+
+    undo(uri: vscode.Uri): void {
+        const key = uri.toString()
+        const state = this.fileStates.get(key)
+        const undoStack = this.undoStacks.get(key)
+        if (!state || !undoStack || undoStack.length === 0) return
+        const prev = undoStack.pop()!
+        const redoStack = this.redoStacks.get(key) ?? []
+        redoStack.push(this.snapshotDecisions(state.chunks))
+        if (redoStack.length > MAX_HISTORY) redoStack.shift()
+        this.redoStacks.set(key, redoStack)
+        this.applySnapshot(state, prev)
+        this._onDidSessionUpdate.fire(this.getSessionState())
+    }
+
+    redo(uri: vscode.Uri): void {
+        const key = uri.toString()
+        const state = this.fileStates.get(key)
+        const redoStack = this.redoStacks.get(key)
+        if (!state || !redoStack || redoStack.length === 0) return
+        const next = redoStack.pop()!
+        const undoStack = this.undoStacks.get(key) ?? []
+        undoStack.push(this.snapshotDecisions(state.chunks))
+        if (undoStack.length > MAX_HISTORY) undoStack.shift()
+        this.undoStacks.set(key, undoStack)
+        this.applySnapshot(state, next)
+        this._onDidSessionUpdate.fire(this.getSessionState())
+    }
+
+    canUndo(uri: vscode.Uri): boolean {
+        return (this.undoStacks.get(uri.toString())?.length ?? 0) > 0
+    }
+
+    canRedo(uri: vscode.Uri): boolean {
+        return (this.redoStacks.get(uri.toString())?.length ?? 0) > 0
     }
 
     getChunks(uri: vscode.Uri): ConflictChunk[] {

@@ -25,7 +25,8 @@
       "Bash(rtk wc *)",
       "Bash(awk 'NR>=33 && NR<=42 {print NR\": \"$0}' /tmp/mp/base.json)",
       "Bash(awk 'NR>=33 && NR<=42 {print NR\": \"$0}' /tmp/mp/stage3.json)",
-      "Bash(rtk proxy *)"
+      "Bash(rtk proxy *)",
+      "Bash(rtk grep *)"
     ]
   }
 }

@@ -19,11 +19,16 @@ interface Props {
     chunks: ConflictChunk[]
     fileName: string
     language: string
+    canUndo: boolean
+    canRedo: boolean
     onChunkDecision: (
         chunkIndex: number,
         side: 'ours' | 'theirs',
         decision: SideDecision
     ) => void
+    onAutoResolve: () => void
+    onUndo: () => void
+    onRedo: () => void
     onSave: (content: string) => void
 }
 
@@ -137,7 +142,12 @@ export function ThreePaneEditor({
     chunks,
     fileName,
     language,
+    canUndo,
+    canRedo,
     onChunkDecision,
+    onAutoResolve,
+    onUndo,
+    onRedo,
     onSave,
 }: Props) {
     const leftRef = useRef<EditorPaneHandle>(null)
@@ -290,15 +300,24 @@ export function ThreePaneEditor({
         onChunkDecision(chunkIndex, side, decision)
     }
 
-    const autoResolve = () => {
-        chunks.forEach((c, i) => {
-            if (c.type === 'non-conflicting' && !isChunkResolved(c)) {
-                const winner = c.winner ?? 'ours'
-                onChunkDecision(i, 'ours', winner === 'ours' ? 'accept' : 'discard')
-                onChunkDecision(i, 'theirs', winner === 'theirs' ? 'accept' : 'discard')
+    // Global keyboard shortcuts for undo / redo. Use window listener so the
+    // shortcut works regardless of which editor pane has focus.
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            const mod = e.metaKey || e.ctrlKey
+            if (!mod) return
+            const key = e.key.toLowerCase()
+            if (key === 'z' && !e.shiftKey) {
+                e.preventDefault()
+                onUndo()
+            } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+                e.preventDefault()
+                onRedo()
             }
-        })
-    }
+        }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [onUndo, onRedo])
 
     return (
         <div
@@ -313,9 +332,13 @@ export function ThreePaneEditor({
                 fileName={fileName}
                 currentConflict={currentConflictIdx + 1}
                 totalConflicts={totalConflicts}
+                canUndo={canUndo}
+                canRedo={canRedo}
                 onPrev={() => navigateConflict(-1)}
                 onNext={() => navigateConflict(1)}
-                onAutoResolve={autoResolve}
+                onAutoResolve={onAutoResolve}
+                onUndo={onUndo}
+                onRedo={onRedo}
                 onSave={() => {
                     const resultContent = centerRef.current?.getEditor()?.getValue()
                     onSave(resultContent ?? resolveFile(baseText, chunks))

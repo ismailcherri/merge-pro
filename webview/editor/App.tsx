@@ -18,6 +18,8 @@ interface EditorState {
     chunks: ConflictChunk[]
     fileName: string
     uri: string
+    canUndo: boolean
+    canRedo: boolean
 }
 
 function detectLanguage(fileName: string): string {
@@ -76,10 +78,19 @@ export function App() {
                     chunks: msg.chunks,
                     fileName: msg.fileName,
                     uri: msg.uri,
+                    canUndo: msg.canUndo,
+                    canRedo: msg.canRedo,
                 })
             } else if (msg.type === 'chunkUpdate') {
                 setEditorState((prev) =>
-                    prev ? { ...prev, chunks: msg.chunks } : null
+                    prev
+                        ? {
+                              ...prev,
+                              chunks: msg.chunks,
+                              canUndo: msg.canUndo,
+                              canRedo: msg.canRedo,
+                          }
+                        : null
                 )
             }
         }
@@ -113,6 +124,10 @@ export function App() {
         vscode.postMessage({ type: 'saveFile', uri: editorState.uri, content })
     }
 
+    const handleAutoResolve = () => vscode.postMessage({ type: 'autoResolve' })
+    const handleUndo = () => vscode.postMessage({ type: 'undo' })
+    const handleRedo = () => vscode.postMessage({ type: 'redo' })
+
     return (
         <ThreePaneEditor
             oursText={editorState.oursText}
@@ -121,7 +136,12 @@ export function App() {
             chunks={editorState.chunks}
             fileName={editorState.fileName}
             language={detectLanguage(editorState.fileName)}
+            canUndo={editorState.canUndo}
+            canRedo={editorState.canRedo}
             onChunkDecision={handleChunkDecision}
+            onAutoResolve={handleAutoResolve}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
             onSave={handleSave}
         />
     )

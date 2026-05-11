@@ -4,9 +4,13 @@ interface Props {
     fileName: string
     currentConflict: number
     totalConflicts: number
+    canUndo: boolean
+    canRedo: boolean
     onPrev: () => void
     onNext: () => void
     onAutoResolve: () => void
+    onUndo: () => void
+    onRedo: () => void
     onSave: () => void
 }
 
@@ -24,11 +28,20 @@ export function Toolbar({
     fileName,
     currentConflict,
     totalConflicts,
+    canUndo,
+    canRedo,
     onPrev,
     onNext,
     onAutoResolve,
+    onUndo,
+    onRedo,
     onSave,
 }: Props) {
+    const disabledBtn = (disabled: boolean): CSSProperties => ({
+        ...btn,
+        opacity: disabled ? 0.4 : 1,
+        cursor: disabled ? 'default' : 'pointer',
+    })
     return (
         <div
             style={{
@@ -81,6 +94,22 @@ export function Toolbar({
                     background: 'rgba(255,255,255,0.15)',
                 }}
             />
+            <button
+                style={disabledBtn(!canUndo)}
+                onClick={onUndo}
+                disabled={!canUndo}
+                title="Undo (⌘Z / Ctrl+Z)"
+            >
+                ↶ Undo
+            </button>
+            <button
+                style={disabledBtn(!canRedo)}
+                onClick={onRedo}
+                disabled={!canRedo}
+                title="Redo (⇧⌘Z / Ctrl+Y)"
+            >
+                ↷ Redo
+            </button>
             <button style={btn} onClick={onAutoResolve}>
                 ✦ Auto-Resolve
             </button>
