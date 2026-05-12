@@ -72,7 +72,7 @@ export function buildDisplayDocuments(
     const oursParts: string[] = []
     const resultParts: string[] = []
     const theirsParts: string[] = []
-    const chunkMaps: ChunkLineMap[] = new Array(chunks.length)
+    const chunkMaps: ChunkLineMap[] = new Array<ChunkLineMap>(chunks.length)
 
     // Per-document line cursors (count of lines emitted so far). The next
     // pushed line will appear at line number `<cursor> + 1`.

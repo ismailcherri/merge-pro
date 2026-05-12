@@ -86,13 +86,15 @@ export class MergePanelProvider
 </head>
 <body>
   <div id="root"></div>
-  <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
+  <script type="module" nonce="${nonce}" src="${scriptUri.toString()}"></script>
 </body>
 </html>`
     }
 
     dispose(): void {
-        this.disposables.forEach((d) => d.dispose())
+        this.disposables.forEach((d) => {
+            d.dispose()
+        })
     }
 }
 

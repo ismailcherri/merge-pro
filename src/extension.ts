@@ -19,10 +19,10 @@ export function activate(context: vscode.ExtensionContext): void {
 
         vscode.commands.registerCommand(
             'mergePro._panelMessage',
-            async (msg: PanelToHost) => {
+            (msg: PanelToHost) => {
                 if (msg.type === 'openEditor') {
                     const uri = vscode.Uri.parse(msg.uri)
-                    await editor.openEditor(uri)
+                    editor.openEditor(uri)
                     panel.setActiveEditorUri(msg.uri)
                 } else if (msg.type === 'batchAccept') {
                     const uri = vscode.Uri.parse(msg.uri)
@@ -34,9 +34,9 @@ export function activate(context: vscode.ExtensionContext): void {
             }
         ),
 
-        vscode.commands.registerCommand('mergePro.openEditor', async () => {
+        vscode.commands.registerCommand('mergePro.openEditor', () => {
             const active = vscode.window.activeTextEditor?.document.uri
-            if (active) await editor.openEditor(active)
+            if (active) editor.openEditor(active)
         }),
 
         vscode.commands.registerCommand('mergePro.prevConflict', () =>

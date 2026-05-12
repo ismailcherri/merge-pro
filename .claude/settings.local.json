@@ -40,7 +40,8 @@
       "Bash(grep -E 'icon.png|README|LICENSE|CHANGELOG|extension.js$')",
       "Bash(echo \"lint=$?\")",
       "Bash(npm audit *)",
-      "Bash(npm view *)"
+      "Bash(npm view *)",
+      "Bash(awk '{print $3, $4}')"
     ]
   }
 }

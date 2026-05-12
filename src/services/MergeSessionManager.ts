@@ -38,7 +38,7 @@ export class MergeSessionManager implements vscode.Disposable {
             vscode.workspace.onDidChangeTextDocument((e) => {
                 const key = e.document.uri.toString()
                 if (this.fileStates.has(key)) {
-                    this.refreshFile(e.document.uri)
+                    void this.refreshFile(e.document.uri)
                 }
             })
         )
@@ -333,7 +333,9 @@ export class MergeSessionManager implements vscode.Disposable {
     }
 
     dispose(): void {
-        this.disposables.forEach((d) => d.dispose())
+        this.disposables.forEach((d) => {
+            d.dispose()
+        })
     }
 }
 

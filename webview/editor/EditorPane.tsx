@@ -73,7 +73,8 @@ export const EditorPane = forwardRef<EditorPaneHandle, Props>(
                 scrollDisposable.dispose()
                 editor.dispose()
             }
-        }, []) // Mount once
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, []) // Mount once: deliberate — re-running would dispose and recreate the editor on every prop change.
 
         // Sync value changes
         useEffect(() => {

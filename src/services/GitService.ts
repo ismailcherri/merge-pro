@@ -153,8 +153,12 @@ export class GitService implements vscode.Disposable {
     }
 
     dispose(): void {
-        this.repoDisposables.forEach((d) => d.dispose())
+        this.repoDisposables.forEach((d) => {
+            d.dispose()
+        })
         this.repoDisposables.clear()
-        this.disposables.forEach((d) => d.dispose())
+        this.disposables.forEach((d) => {
+            d.dispose()
+        })
     }
 }

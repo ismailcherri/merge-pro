@@ -15,7 +15,7 @@ export class MergeEditorProvider implements vscode.Disposable {
         private readonly session: MergeSessionManager
     ) {}
 
-    async openEditor(uri: vscode.Uri): Promise<void> {
+    openEditor(uri: vscode.Uri): void {
         const key = uri.toString()
 
         // Reuse existing panel if open
@@ -45,7 +45,9 @@ export class MergeEditorProvider implements vscode.Disposable {
         panel.onDidDispose(
             () => {
                 this.panels.delete(key)
-                panelDisposables.forEach((d) => d.dispose())
+                panelDisposables.forEach((d) => {
+                    d.dispose()
+                })
             },
             null,
             panelDisposables
@@ -190,7 +192,7 @@ export class MergeEditorProvider implements vscode.Disposable {
                 const href = webview.asWebviewUri(
                     vscode.Uri.joinPath(assetsDir, name)
                 )
-                cssLinks += `\n  <link rel="stylesheet" href="${href}">`
+                cssLinks += `\n  <link rel="stylesheet" href="${href.toString()}">`
             }
         } catch {
             // Build hasn't run or the dir is missing — webview will still load
@@ -207,14 +209,18 @@ export class MergeEditorProvider implements vscode.Disposable {
 </head>
 <body>
   <div id="root"></div>
-  <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
+  <script type="module" nonce="${nonce}" src="${scriptUri.toString()}"></script>
 </body>
 </html>`
     }
 
     dispose(): void {
-        this.panels.forEach((p) => p.dispose())
-        this.disposables.forEach((d) => d.dispose())
+        this.panels.forEach((p) => {
+            p.dispose()
+        })
+        this.disposables.forEach((d) => {
+            d.dispose()
+        })
     }
 }
 

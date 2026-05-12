@@ -34,7 +34,7 @@ function diffHunks(a: string[], b: string[]): Hunk[] {
     const n = b.length
     // LCS length table.
     const c: number[][] = Array.from({ length: m + 1 }, () =>
-        new Array(n + 1).fill(0)
+        new Array<number>(n + 1).fill(0)
     )
     for (let i = 1; i <= m; i++) {
         for (let j = 1; j <= n; j++) {
