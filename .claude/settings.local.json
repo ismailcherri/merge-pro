@@ -38,7 +38,9 @@
       "Bash(echo \"---lint exit=$?---\")",
       "Bash(unzip -l merge-pro-0.1.0.vsix)",
       "Bash(grep -E 'icon.png|README|LICENSE|CHANGELOG|extension.js$')",
-      "Bash(echo \"lint=$?\")"
+      "Bash(echo \"lint=$?\")",
+      "Bash(npm audit *)",
+      "Bash(npm view *)"
     ]
   }
 }
