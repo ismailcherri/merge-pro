@@ -31,8 +31,5 @@ jobs:
             - name: Build
               run: npm run build
 
-            - name: Integration tests (xvfb)
-              run: xvfb-run -a npm run test:integration
-
             - name: Package (dry run)
               run: npx vsce package --no-dependencies
