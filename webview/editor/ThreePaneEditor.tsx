@@ -7,6 +7,10 @@ import {
 } from '../../src/protocol'
 import { resolveFile } from '../../src/utils/ConflictResolver'
 import { buildDisplayDocuments, ChunkLineMap, LineRange } from './buildDisplayDocuments'
+import {
+    computePaneInlineDecorations,
+    type ChunkBaseRange,
+} from './computePaneInlineDecorations'
 import { DecisionButtons } from './DecisionButtons'
 import { EditorPane, EditorPaneHandle } from './EditorPane'
 import { GutterConnector } from './GutterConnector'
@@ -69,6 +73,8 @@ if (typeof document !== 'undefined') {
     .merge-empty-nonconflict-bottom { border-bottom: 2px solid rgba(98,178,98,0.65); }
     .merge-empty-partial-top     { border-top: 2px solid rgba(220,80,70,0.45); }
     .merge-empty-partial-bottom  { border-bottom: 2px solid rgba(220,80,70,0.45); }
+    .mp-inline-added   { background: var(--vscode-diffEditor-insertedTextBackground, rgba(98,178,98,0.30)); }
+    .mp-inline-removed { background: var(--vscode-diffEditor-removedTextBackground,  rgba(220,80,70,0.30)); }
         `
         document.head.appendChild(style)
     }
@@ -195,17 +201,48 @@ export function ThreePaneEditor({
     const centerEditor = editorsReady ? centerRef.current!.getEditor()! : null
     const rightEditor = editorsReady ? rightRef.current!.getEditor()! : null
 
+    const chunkBaseRanges = useMemo<ChunkBaseRange[]>(
+        () =>
+            chunks.map((c) => ({
+                start: c.baseStartLine + 1,
+                end: c.baseEndLine,
+            })),
+        [chunks]
+    )
+
+    const inlineDecorations = useMemo(
+        () =>
+            computePaneInlineDecorations({
+                ours,
+                result,
+                theirs,
+                baseText,
+                chunkMaps,
+                chunkBaseRanges,
+            }),
+        [ours, result, theirs, baseText, chunkMaps, chunkBaseRanges]
+    )
+
     const oursDecorations = useMemo(
-        () => buildPaneDecorations(chunks, chunkMaps, 'ours'),
-        [chunks, chunkMaps]
+        () => [
+            ...buildPaneDecorations(chunks, chunkMaps, 'ours'),
+            ...(inlineDecorations.ours as monaco.editor.IModelDeltaDecoration[]),
+        ],
+        [chunks, chunkMaps, inlineDecorations]
     )
     const resultDecorations = useMemo(
-        () => buildPaneDecorations(chunks, chunkMaps, 'result'),
-        [chunks, chunkMaps]
+        () => [
+            ...buildPaneDecorations(chunks, chunkMaps, 'result'),
+            ...(inlineDecorations.result as monaco.editor.IModelDeltaDecoration[]),
+        ],
+        [chunks, chunkMaps, inlineDecorations]
     )
     const theirsDecorations = useMemo(
-        () => buildPaneDecorations(chunks, chunkMaps, 'theirs'),
-        [chunks, chunkMaps]
+        () => [
+            ...buildPaneDecorations(chunks, chunkMaps, 'theirs'),
+            ...(inlineDecorations.theirs as monaco.editor.IModelDeltaDecoration[]),
+        ],
+        [chunks, chunkMaps, inlineDecorations]
     )
 
     // Imperative line-anchored scroll sync. The source pane's scroll
