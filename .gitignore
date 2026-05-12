@@ -5,3 +5,4 @@ out/
 test-fixtures/conflict-repo/repo/
 .superpowers/
 .vscode-test/
+.wolf/
