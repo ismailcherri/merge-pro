@@ -64,15 +64,6 @@ function extractHunks(
     return hunks
 }
 
-function overlaps(a: Hunk, b: Hunk): boolean {
-    // Two ranges [a.baseStart, a.baseEnd) and [b.baseStart, b.baseEnd) overlap
-    // when they share at least one line, OR both are insertions at the same point.
-    if (a.baseStart === a.baseEnd && b.baseStart === b.baseEnd) {
-        return a.baseStart === b.baseStart
-    }
-    return a.baseStart < b.baseEnd && b.baseStart < a.baseEnd
-}
-
 /**
  * Reconstructs one side's content for a chunk's full base range by walking
  * the side's hunks in order: contribute each hunk's newLines, and fill the

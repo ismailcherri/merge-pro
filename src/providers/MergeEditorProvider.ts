@@ -1,4 +1,5 @@
 import { randomBytes } from 'crypto'
+import { readdirSync } from 'fs'
 import * as vscode from 'vscode'
 import type { EditorToHost, HostToEditor } from '../protocol'
 import type { GitService } from '../services/GitService'
@@ -183,8 +184,7 @@ export class MergeEditorProvider implements vscode.Disposable {
         )
         let cssLinks = ''
         try {
-            const entries =
-                require('fs').readdirSync(assetsDir.fsPath) as string[]
+            const entries = readdirSync(assetsDir.fsPath)
             for (const name of entries) {
                 if (!name.endsWith('.css')) continue
                 const href = webview.asWebviewUri(
