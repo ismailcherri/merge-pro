@@ -1,0 +1,56 @@
+name: Bug report
+description: Report something that is not working as expected
+title: 'bug: '
+labels: ['bug', 'triage']
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the bug.
+      placeholder: When I click X, Y happens. I expected Z.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps a maintainer can follow to see the bug.
+      placeholder: |
+        1. Clone fixture repo X.
+        2. Run `git merge feature-branch`.
+        3. Open the MergePro panel.
+        4. ...
+    validations:
+      required: true
+  - type: input
+    id: vscode-version
+    attributes:
+      label: VS Code version (or fork + version)
+      placeholder: '1.93.1 / Cursor 0.42.0'
+    validations:
+      required: true
+  - type: input
+    id: extension-version
+    attributes:
+      label: MergePro version
+      placeholder: '0.1.0'
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Output from `Developer: Open Webview Developer Tools`, or screenshots of the UI state.
+      render: shell

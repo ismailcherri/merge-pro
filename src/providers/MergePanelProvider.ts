@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto'
 import * as vscode from 'vscode'
 import type { HostToPanel, PanelToHost, WebviewSessionState } from '../protocol'
 import type { MergeSessionManager } from '../services/MergeSessionManager'
@@ -80,7 +81,7 @@ export class MergePanelProvider
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}' 'strict-dynamic';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}' 'strict-dynamic'; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource} data:; img-src ${webview.cspSource} https: data:;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
@@ -96,10 +97,5 @@ export class MergePanelProvider
 }
 
 function getNonce(): string {
-    let text = ''
-    const possible =
-        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    for (let i = 0; i < 32; i++)
-        text += possible.charAt(Math.floor(Math.random() * possible.length))
-    return text
+    return randomBytes(16).toString('base64url')
 }
