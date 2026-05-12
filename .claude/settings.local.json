@@ -26,7 +26,19 @@
       "Bash(awk 'NR>=33 && NR<=42 {print NR\": \"$0}' /tmp/mp/base.json)",
       "Bash(awk 'NR>=33 && NR<=42 {print NR\": \"$0}' /tmp/mp/stage3.json)",
       "Bash(rtk proxy *)",
-      "Bash(rtk grep *)"
+      "Bash(rtk grep *)",
+      "Bash(rtk curl *)",
+      "Bash(awk 'BEGIN{skip=0} /^\\\\+\\\\+\\\\+$/{skip=!skip; next} !skip {print}' CODE_OF_CONDUCT.md)",
+      "Bash(sed -i '' 's/\\\\[INSERT CONTACT METHOD\\\\]/ismailcherri@gmail.com/g' /tmp/coc.md)",
+      "Bash(mv /tmp/coc.md CODE_OF_CONDUCT.md)",
+      "Bash(rtk lint *)",
+      "Bash(./node_modules/.bin/eslint src *)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(python3 -c \"import yaml; yaml.safe_load\\(open\\('.github/workflows/release.yml'\\)\\)\")",
+      "Bash(echo \"---lint exit=$?---\")",
+      "Bash(unzip -l merge-pro-0.1.0.vsix)",
+      "Bash(grep -E 'icon.png|README|LICENSE|CHANGELOG|extension.js$')",
+      "Bash(echo \"lint=$?\")"
     ]
   }
 }
