@@ -1,27 +1,42 @@
 {
     "name": "merge-pro",
     "displayName": "MergePro",
-    "publisher": "merge-pro-publisher",
-    "description": "IntelliJ-style three-pane merge conflict resolver",
+    "publisher": "ismailcherri",
+    "description": "IntelliJ-style three-pane merge conflict resolver for VS Code.",
     "version": "0.1.0",
+    "license": "MIT",
+    "icon": "assets/icon.png",
     "repository": {
         "type": "git",
-        "url": "https://github.com/merge-pro-publisher/merge-pro"
+        "url": "https://github.com/ismailcherri/merge-pro.git"
+    },
+    "bugs": {
+        "url": "https://github.com/ismailcherri/merge-pro/issues"
+    },
+    "homepage": "https://github.com/ismailcherri/merge-pro#readme",
+    "qna": "marketplace",
+    "galleryBanner": {
+        "color": "#3C2F2F",
+        "theme": "dark"
     },
     "engines": {
-        "vscode": "^1.85.0"
+        "vscode": "^1.85.0",
+        "node": ">=20.0.0"
     },
     "categories": [
+        "SCM Providers",
         "Other"
     ],
     "keywords": [
         "git",
         "merge",
         "conflict",
-        "diff"
-    ],
-    "activationEvents": [
-        "onStartupFinished"
+        "diff",
+        "three-way",
+        "intellij",
+        "resolve",
+        "merge-tool",
+        "vcs"
     ],
     "main": "./out/extension.js",
     "contributes": {
