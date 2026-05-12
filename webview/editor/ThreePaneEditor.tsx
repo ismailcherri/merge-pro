@@ -478,6 +478,9 @@ export function ThreePaneEditor({
                         width={LINENO_WIDTH}
                         height={paneHeight}
                         align="right"
+                        chunks={chunks}
+                        chunkMaps={chunkMaps}
+                        pane="ours"
                     />
                 </div>
 
@@ -516,6 +519,9 @@ export function ThreePaneEditor({
                         width={LINENO_WIDTH}
                         height={paneHeight}
                         align="right"
+                        chunks={chunks}
+                        chunkMaps={chunkMaps}
+                        pane="result"
                     />
                 </div>
 
@@ -551,6 +557,9 @@ export function ThreePaneEditor({
                         width={LINENO_WIDTH}
                         height={paneHeight}
                         align="left"
+                        chunks={chunks}
+                        chunkMaps={chunkMaps}
+                        pane="result"
                     />
                 </div>
 
@@ -589,6 +598,9 @@ export function ThreePaneEditor({
                         width={LINENO_WIDTH}
                         height={paneHeight}
                         align="left"
+                        chunks={chunks}
+                        chunkMaps={chunkMaps}
+                        pane="theirs"
                     />
                 </div>
 

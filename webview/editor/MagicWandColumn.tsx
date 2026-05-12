@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { isChunkResolved, type ConflictChunk } from '../../src/protocol'
 import { magicMerge } from '../../src/utils/magicMerge'
 import type { ChunkLineMap } from './buildDisplayDocuments'
+import { ChunkBandLayer } from './ChunkBandLayer'
 
 interface Props {
     chunks: ConflictChunk[]
@@ -95,12 +96,26 @@ export function MagicWandColumn({
     }, [chunks, chunkMaps, editor, height, width])
 
     return (
-        <svg
-            width={width}
-            height={height}
-            style={{ display: 'block', width: '100%', height: '100%' }}
-        >
-            {chunks.map((_, i) => {
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+            <ChunkBandLayer
+                chunks={chunks}
+                chunkMaps={chunkMaps}
+                editor={editor}
+                pane="result"
+                width={width}
+                height={height}
+            />
+            <svg
+                width={width}
+                height={height}
+                style={{
+                    display: 'block',
+                    width: '100%',
+                    height: '100%',
+                    position: 'relative',
+                }}
+            >
+                {chunks.map((_, i) => {
                 if (!mergeable.has(i)) return null
                 return (
                     <g
@@ -133,6 +148,7 @@ export function MagicWandColumn({
                     </g>
                 )
             })}
-        </svg>
+            </svg>
+        </div>
     )
 }

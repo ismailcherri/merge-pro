@@ -1,11 +1,18 @@
 import * as monaco from 'monaco-editor'
 import { useEffect, useRef, useState } from 'react'
+import type { ConflictChunk } from '../../src/protocol'
+import type { ChunkLineMap } from './buildDisplayDocuments'
+import { ChunkBandLayer } from './ChunkBandLayer'
+import type { Pane } from './lineMapping'
 
 interface Props {
     editor: monaco.editor.IStandaloneCodeEditor | null
     width: number
     height: number
     align: 'left' | 'right'
+    chunks?: ConflictChunk[]
+    chunkMaps?: ChunkLineMap[]
+    pane?: Pane
 }
 
 /**
@@ -14,7 +21,15 @@ interface Props {
  * in lockstep with the editor (via `top` offsets). Only the visible window
  * plus a small overscan is rendered.
  */
-export function LineNumberStrip({ editor, width, height, align }: Props) {
+export function LineNumberStrip({
+    editor,
+    width,
+    height,
+    align,
+    chunks,
+    chunkMaps,
+    pane,
+}: Props) {
     const rootRef = useRef<HTMLDivElement>(null)
     const rafRef = useRef<number | null>(null)
     const [tick, setTick] = useState(0)
@@ -90,6 +105,16 @@ export function LineNumberStrip({ editor, width, height, align }: Props) {
             }}
             data-tick={tick}
         >
+            {chunks && chunkMaps && pane && (
+                <ChunkBandLayer
+                    chunks={chunks}
+                    chunkMaps={chunkMaps}
+                    editor={editor}
+                    pane={pane}
+                    width={width}
+                    height={height}
+                />
+            )}
             {items.map((it) => (
                 <div
                     key={it.lineNumber}
