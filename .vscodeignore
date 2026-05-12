@@ -20,6 +20,9 @@ package-lock.json
 **/*.map
 **/*.vsix
 out/test/**
+Users/**
+out/webview/monacoeditorwork/**
 AGENTS.md
+CLAUDE.md
 CONTRIBUTING.md
 CODE_OF_CONDUCT.md
