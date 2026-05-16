@@ -7,7 +7,14 @@ import type { MergeSessionManager } from '../services/MergeSessionManager'
 
 export class MergeEditorProvider implements vscode.Disposable {
     private panels = new Map<string, vscode.WebviewPanel>()
-    private readonly disposables: vscode.Disposable[] = []
+    private activeUri: string | undefined
+    private readonly _onDidChangeActiveEditor = new vscode.EventEmitter<
+        string | undefined
+    >()
+    readonly onDidChangeActiveEditor = this._onDidChangeActiveEditor.event
+    private readonly disposables: vscode.Disposable[] = [
+        this._onDidChangeActiveEditor,
+    ]
 
     constructor(
         private readonly extensionUri: vscode.Uri,
@@ -39,12 +46,28 @@ export class MergeEditorProvider implements vscode.Disposable {
         )
 
         this.panels.set(key, panel)
+        this.setActive(key)
 
         const panelDisposables: vscode.Disposable[] = []
+
+        panel.onDidChangeViewState(
+            () => {
+                if (panel.active) {
+                    this.setActive(key)
+                } else if (this.activeUri === key) {
+                    this.setActive(undefined)
+                }
+            },
+            null,
+            panelDisposables
+        )
 
         panel.onDidDispose(
             () => {
                 this.panels.delete(key)
+                if (this.activeUri === key) {
+                    this.setActive(undefined)
+                }
                 panelDisposables.forEach((d) => {
                     d.dispose()
                 })
@@ -125,6 +148,12 @@ export class MergeEditorProvider implements vscode.Disposable {
             null,
             panelDisposables
         )
+    }
+
+    private setActive(uri: string | undefined): void {
+        if (this.activeUri === uri) return
+        this.activeUri = uri
+        this._onDidChangeActiveEditor.fire(uri)
     }
 
     private async sendInit(

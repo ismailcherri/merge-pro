@@ -41,7 +41,8 @@
       "Bash(echo \"lint=$?\")",
       "Bash(npm audit *)",
       "Bash(npm view *)",
-      "Bash(awk '{print $3, $4}')"
+      "Bash(awk '{print $3, $4}')",
+      "Skill(superpowers:systematic-debugging)"
     ]
   }
 }

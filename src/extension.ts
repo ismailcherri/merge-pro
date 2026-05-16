@@ -17,13 +17,14 @@ export function activate(context: vscode.ExtensionContext): void {
             panel
         ),
 
+        editor.onDidChangeActiveEditor((uri) => panel.setActiveEditorUri(uri)),
+
         vscode.commands.registerCommand(
             'mergePro._panelMessage',
             (msg: PanelToHost) => {
                 if (msg.type === 'openEditor') {
                     const uri = vscode.Uri.parse(msg.uri)
                     editor.openEditor(uri)
-                    panel.setActiveEditorUri(msg.uri)
                 } else if (msg.type === 'batchAccept') {
                     const uri = vscode.Uri.parse(msg.uri)
                     session.batchAccept(uri, msg.side)
