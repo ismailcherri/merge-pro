@@ -3,9 +3,8 @@
 > IntelliJ-style three-pane merge conflict resolver for VS Code, Cursor, and other VS Code forks.
 
 [![CI](https://github.com/ismailcherri/merge-pro/actions/workflows/ci.yml/badge.svg)](https://github.com/ismailcherri/merge-pro/actions/workflows/ci.yml)
-[![VS Marketplace](https://vsmarketplacebadges.dev/version-short/ismailcherri.merge-pro.svg?label=VS%20Marketplace&style=flat)](https://marketplace.visualstudio.com/items?itemName=ismailcherri.merge-pro)
-[![VS Marketplace Installs](https://vsmarketplacebadges.dev/installs-short/ismailcherri.merge-pro.svg?label=Installs&style=flat)](https://marketplace.visualstudio.com/items?itemName=ismailcherri.merge-pro)
-[![Open VSX](https://img.shields.io/open-vsx/v/ismailcherri/merge-pro?label=Open%20VSX)](https://open-vsx.org/extension/ismailcherri/merge-pro)
+[![VS Marketplace](https://img.shields.io/badge/VS%20Marketplace-MergePro-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=ismailcherri.merge-pro)
+[![Open VSX](https://img.shields.io/badge/Open%20VSX-MergePro-C160EF?logo=eclipseide&logoColor=white)](https://open-vsx.org/extension/ismailcherri/merge-pro)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ![Interface](./assets/diff_view.png)
