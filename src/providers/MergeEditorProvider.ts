@@ -7,6 +7,7 @@ import type { MergeSessionManager } from '../services/MergeSessionManager'
 
 export class MergeEditorProvider implements vscode.Disposable {
     private panels = new Map<string, vscode.WebviewPanel>()
+    private dirty = new Map<string, boolean>()
     private activeUri: string | undefined
     private readonly _onDidChangeActiveEditor = new vscode.EventEmitter<
         string | undefined
@@ -68,6 +69,12 @@ export class MergeEditorProvider implements vscode.Disposable {
                 if (this.activeUri === key) {
                     this.setActive(undefined)
                 }
+                if (this.dirty.get(key)) {
+                    this.dirty.delete(key)
+                    void this.warnUnsaved(uri)
+                } else {
+                    this.dirty.delete(key)
+                }
                 panelDisposables.forEach((d) => {
                     d.dispose()
                 })
@@ -96,6 +103,7 @@ export class MergeEditorProvider implements vscode.Disposable {
                         msg.side,
                         msg.decision
                     )
+                    this.dirty.set(key, true)
                     this.sendChunkUpdate(panel, uri)
                 } else if (msg.type === 'chunkResolvedManual') {
                     this.session.setChunkManual(
@@ -103,21 +111,27 @@ export class MergeEditorProvider implements vscode.Disposable {
                         msg.chunkIndex,
                         msg.lines
                     )
+                    this.dirty.set(key, true)
                     this.sendChunkUpdate(panel, uri)
                 } else if (msg.type === 'autoResolve') {
                     this.session.autoResolveNonConflicting(uri)
+                    this.dirty.set(key, true)
                     this.sendChunkUpdate(panel, uri)
                 } else if (msg.type === 'magicResolve') {
                     this.session.magicResolve(uri)
+                    this.dirty.set(key, true)
                     this.sendChunkUpdate(panel, uri)
                 } else if (msg.type === 'magicResolveChunk') {
                     this.session.magicResolveChunk(uri, msg.chunkIndex)
+                    this.dirty.set(key, true)
                     this.sendChunkUpdate(panel, uri)
                 } else if (msg.type === 'undo') {
                     this.session.undo(uri)
+                    this.dirty.set(key, true)
                     this.sendChunkUpdate(panel, uri)
                 } else if (msg.type === 'redo') {
                     this.session.redo(uri)
+                    this.dirty.set(key, true)
                     this.sendChunkUpdate(panel, uri)
                 } else if (msg.type === 'saveFile') {
                     try {
@@ -133,6 +147,7 @@ export class MergeEditorProvider implements vscode.Disposable {
                         }
                         const bytes = Buffer.from(msg.content, 'utf8')
                         await vscode.workspace.fs.writeFile(uri, bytes)
+                        this.dirty.set(key, false)
                         if (!hasUnresolved) {
                             vscode.window.showInformationMessage(
                                 `MergePro: Saved ${vscode.workspace.asRelativePath(uri)}`
@@ -154,6 +169,15 @@ export class MergeEditorProvider implements vscode.Disposable {
         if (this.activeUri === uri) return
         this.activeUri = uri
         this._onDidChangeActiveEditor.fire(uri)
+    }
+
+    private async warnUnsaved(uri: vscode.Uri): Promise<void> {
+        const fileName = vscode.workspace.asRelativePath(uri)
+        const choice = await vscode.window.showWarningMessage(
+            `MergePro: You closed the merge editor for ${fileName} with unsaved changes. Your decisions are kept in this session.`,
+            'Reopen'
+        )
+        if (choice === 'Reopen') this.openEditor(uri)
     }
 
     private async sendInit(
