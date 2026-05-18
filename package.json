@@ -46,6 +46,7 @@
                     "type": "webview",
                     "id": "mergePro.panel",
                     "name": "MergePro",
+                    "icon": "$(git-merge)",
                     "when": "true"
                 }
             ]
