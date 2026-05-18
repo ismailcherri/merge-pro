@@ -7,7 +7,7 @@
 [![Open VSX](https://img.shields.io/open-vsx/v/ismailcherri/merge-pro?label=Open%20VSX)](https://open-vsx.org/extension/ismailcherri/merge-pro)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-<!-- TODO: add screenshot or GIF before publishing -->
+![Interface](./assets/diff_view.png)
 
 ## Features
 
