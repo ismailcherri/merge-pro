@@ -42,7 +42,8 @@
             "Bash(npm audit *)",
             "Bash(npm view *)",
             "Bash(awk '{print $3, $4}')",
-            "Skill(superpowers:systematic-debugging)"
+            "Skill(superpowers:systematic-debugging)",
+            "Bash(npm i *)"
         ]
     }
 }
