@@ -12,7 +12,10 @@ scripts/**
 .github/**
 .gitignore
 .prettierrc
+.prettierignore
 .editorconfig
+eslint.config.*
+.eslintrc*
 tsconfig*.json
 vite.config.ts
 vitest*.config.ts
