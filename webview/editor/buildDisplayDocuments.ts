@@ -29,7 +29,10 @@ export interface DisplayDocuments {
 
 function resolveChunkLines(chunk: ConflictChunk): string[] {
     if (chunk.manualLines !== undefined) return chunk.manualLines
-    if (chunk.oursDecision !== undefined || chunk.theirsDecision !== undefined) {
+    if (
+        chunk.oursDecision !== undefined ||
+        chunk.theirsDecision !== undefined
+    ) {
         return resolvedChunkLines(chunk)
     }
     if (chunk.type === 'non-conflicting') {

@@ -7,7 +7,7 @@ Guidance for AI coding assistants (Claude Code, Cursor, GitHub Copilot, Codex, A
 - Read the spec for any non-trivial change before editing code: `docs/superpowers/specs/`.
 - Tests live under `test/`. Run `npm test` before claiming a task is done.
 - Never commit `out/`, `*.vsix`, `node_modules/`, or anything under `test-fixtures/conflict-repo/repo/`.
-- Default to no comments. Explain *why* only when the reason is non-obvious.
+- Default to no comments. Explain _why_ only when the reason is non-obvious.
 
 ## Architecture map
 
@@ -28,14 +28,14 @@ Key types and contracts live in `src/protocol.ts` and `src/types.ts`. Treat the 
 
 ## Build, test, lint
 
-| Goal              | Command                          |
-|-------------------|----------------------------------|
+| Goal              | Command                             |
+| ----------------- | ----------------------------------- |
 | Type-check        | `npx tsc -p tsconfig.json --noEmit` |
-| Full build        | `npm run build`                  |
-| Unit tests        | `npm test`                       |
-| Integration tests | `npm run test:integration`       |
-| Lint              | `npm run lint`                   |
-| Format            | `npm run format`                 |
+| Full build        | `npm run build`                     |
+| Unit tests        | `npm test`                          |
+| Integration tests | `npm run test:integration`          |
+| Lint              | `npm run lint`                      |
+| Format            | `npm run format`                    |
 
 CI runs lint, unit, integration, and a `vsce package --no-dependencies` dry-run on every PR. Do not push without these passing locally.
 
@@ -43,7 +43,7 @@ CI runs lint, unit, integration, and a `vsce package --no-dependencies` dry-run 
 
 - **Prettier is the source of truth** for formatting (`.prettierrc`). Run `npm run format` before committing.
 - **TypeScript strict mode is on.** Do not weaken types to silence errors.
-- **Default to no comments.** A well-named identifier beats a comment. Add a one-line comment only when the *why* is non-obvious (a workaround, a subtle invariant, a perf trade-off).
+- **Default to no comments.** A well-named identifier beats a comment. Add a one-line comment only when the _why_ is non-obvious (a workaround, a subtle invariant, a perf trade-off).
 - **No multi-paragraph docstrings.** One line max.
 - **File-size signal:** if a file grows past ~300 lines or starts mixing responsibilities, split it. Files that change together live together; split by responsibility, not by technical layer.
 - **No defensive code at internal boundaries.** Trust your callers. Validate only at system boundaries (user input, git CLI output, message protocol entry).

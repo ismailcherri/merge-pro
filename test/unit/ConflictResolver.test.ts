@@ -168,16 +168,16 @@ describe('one-sided non-conflicting chunks', () => {
 
     it('ours-only chunk is resolved by oursDecision alone', () => {
         expect(isChunkResolved(oursOnly)).toBe(false)
-        expect(
-            isChunkResolved({ ...oursOnly, oursDecision: 'accept' })
-        ).toBe(true)
-        expect(
-            isChunkResolved({ ...oursOnly, oursDecision: 'discard' })
-        ).toBe(true)
+        expect(isChunkResolved({ ...oursOnly, oursDecision: 'accept' })).toBe(
+            true
+        )
+        expect(isChunkResolved({ ...oursOnly, oursDecision: 'discard' })).toBe(
+            true
+        )
         // theirsDecision alone does not resolve an ours-only chunk
-        expect(
-            isChunkResolved({ ...oursOnly, theirsDecision: 'accept' })
-        ).toBe(false)
+        expect(isChunkResolved({ ...oursOnly, theirsDecision: 'accept' })).toBe(
+            false
+        )
     })
 
     it('theirs-only chunk is resolved by theirsDecision alone', () => {
@@ -185,9 +185,9 @@ describe('one-sided non-conflicting chunks', () => {
         expect(
             isChunkResolved({ ...theirsOnly, theirsDecision: 'accept' })
         ).toBe(true)
-        expect(
-            isChunkResolved({ ...theirsOnly, oursDecision: 'accept' })
-        ).toBe(false)
+        expect(isChunkResolved({ ...theirsOnly, oursDecision: 'accept' })).toBe(
+            false
+        )
     })
 
     it('accept on the changed side yields its lines; discard yields base', () => {

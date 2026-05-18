@@ -21,8 +21,14 @@ export function computeInlineDiff(a: string, b: string): InlineDiffResult {
 
     if (a.length > LONG_LINE_THRESHOLD || b.length > LONG_LINE_THRESHOLD) {
         return {
-            left: a.length > 0 ? [{ start: 0, end: a.length, kind: 'removed' }] : [],
-            right: b.length > 0 ? [{ start: 0, end: b.length, kind: 'added' }] : [],
+            left:
+                a.length > 0
+                    ? [{ start: 0, end: a.length, kind: 'removed' }]
+                    : [],
+            right:
+                b.length > 0
+                    ? [{ start: 0, end: b.length, kind: 'added' }]
+                    : [],
         }
     }
 
@@ -39,10 +45,18 @@ export function computeInlineDiff(a: string, b: string): InlineDiffResult {
             leftPos += text.length
             rightPos += text.length
         } else if (op === -1) {
-            left.push({ start: leftPos, end: leftPos + text.length, kind: 'removed' })
+            left.push({
+                start: leftPos,
+                end: leftPos + text.length,
+                kind: 'removed',
+            })
             leftPos += text.length
         } else if (op === 1) {
-            right.push({ start: rightPos, end: rightPos + text.length, kind: 'added' })
+            right.push({
+                start: rightPos,
+                end: rightPos + text.length,
+                kind: 'added',
+            })
             rightPos += text.length
         }
     }

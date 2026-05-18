@@ -156,7 +156,16 @@ export function GutterConnector({
             dll.dispose()
             drl.dispose()
         }
-    }, [chunks, chunkMaps, leftEditor, rightEditor, leftPane, rightPane, width, height])
+    }, [
+        chunks,
+        chunkMaps,
+        leftEditor,
+        rightEditor,
+        leftPane,
+        rightPane,
+        width,
+        height,
+    ])
 
     return (
         <svg

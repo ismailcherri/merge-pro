@@ -106,11 +106,7 @@ export class MergeEditorProvider implements vscode.Disposable {
                     this.dirty.set(key, true)
                     this.sendChunkUpdate(panel, uri)
                 } else if (msg.type === 'chunkResolvedManual') {
-                    this.session.setChunkManual(
-                        uri,
-                        msg.chunkIndex,
-                        msg.lines
-                    )
+                    this.session.setChunkManual(uri, msg.chunkIndex, msg.lines)
                     this.dirty.set(key, true)
                     this.sendChunkUpdate(panel, uri)
                 } else if (msg.type === 'autoResolve') {

@@ -58,8 +58,7 @@ export function MagicWandColumn({
 
                 const range = map.result
                 const top = editor.getTopForLineNumber(range.start) - scroll
-                const bot =
-                    editor.getTopForLineNumber(range.end + 1) - scroll
+                const bot = editor.getTopForLineNumber(range.end + 1) - scroll
                 const onScreen = bot >= 0 && top <= height
                 if (!onScreen) {
                     grp.style.display = 'none'
@@ -116,38 +115,38 @@ export function MagicWandColumn({
                 }}
             >
                 {chunks.map((_, i) => {
-                if (!mergeable.has(i)) return null
-                return (
-                    <g
-                        key={`wand-${i}`}
-                        ref={(el) => {
-                            groupRefs.current[i] = el
-                        }}
-                        style={{ display: 'none', cursor: 'pointer' }}
-                        onClick={() => onMagicChunk(i)}
-                    >
-                        <title>Magic-merge this chunk</title>
-                        <rect
-                            width={WAND_H}
-                            height={WAND_H}
-                            rx={3}
-                            fill="transparent"
-                        />
-                        <text
-                            x={WAND_H / 2}
-                            y={WAND_H * 0.78}
-                            textAnchor="middle"
-                            fontSize={12}
-                            style={{
-                                userSelect: 'none',
-                                pointerEvents: 'none',
+                    if (!mergeable.has(i)) return null
+                    return (
+                        <g
+                            key={`wand-${i}`}
+                            ref={(el) => {
+                                groupRefs.current[i] = el
                             }}
+                            style={{ display: 'none', cursor: 'pointer' }}
+                            onClick={() => onMagicChunk(i)}
                         >
-                            ✨
-                        </text>
-                    </g>
-                )
-            })}
+                            <title>Magic-merge this chunk</title>
+                            <rect
+                                width={WAND_H}
+                                height={WAND_H}
+                                rx={3}
+                                fill="transparent"
+                            />
+                            <text
+                                x={WAND_H / 2}
+                                y={WAND_H * 0.78}
+                                textAnchor="middle"
+                                fontSize={12}
+                                style={{
+                                    userSelect: 'none',
+                                    pointerEvents: 'none',
+                                }}
+                            >
+                                ✨
+                            </text>
+                        </g>
+                    )
+                })}
             </svg>
         </div>
     )

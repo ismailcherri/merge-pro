@@ -22,35 +22,35 @@ Press `F5` in VS Code to launch the Extension Development Host with the local bu
 
 ## Repository layout
 
-| Path                        | Purpose                                              |
-|-----------------------------|------------------------------------------------------|
-| `src/`                      | Extension host (Node, TypeScript).                   |
-| `src/protocol.ts`           | Typed message contract between host and webview.    |
-| `src/providers/`            | Webview hosts (`MergePanelProvider`, `MergeEditorProvider`). |
-| `src/services/`             | Domain services (`GitService`, `MergeSessionManager`). |
-| `src/parsers/`              | Conflict marker parsing.                             |
-| `src/utils/`                | Pure helpers.                                        |
-| `webview/`                  | React UIs for the panel and editor.                  |
-| `webview/panel/`            | SCM sidebar React app.                               |
-| `webview/editor/`           | Three-pane merge editor React app.                   |
-| `test/`                     | Integration tests via `@vscode/test-electron`.       |
-| `test-fixtures/`            | Fixture git repos with real merge conflicts.         |
-| `docs/superpowers/specs/`   | Design documents.                                    |
-| `docs/superpowers/plans/`   | Implementation plans.                                |
-| `out/`                      | Build output (gitignored).                           |
+| Path                      | Purpose                                                      |
+| ------------------------- | ------------------------------------------------------------ |
+| `src/`                    | Extension host (Node, TypeScript).                           |
+| `src/protocol.ts`         | Typed message contract between host and webview.             |
+| `src/providers/`          | Webview hosts (`MergePanelProvider`, `MergeEditorProvider`). |
+| `src/services/`           | Domain services (`GitService`, `MergeSessionManager`).       |
+| `src/parsers/`            | Conflict marker parsing.                                     |
+| `src/utils/`              | Pure helpers.                                                |
+| `webview/`                | React UIs for the panel and editor.                          |
+| `webview/panel/`          | SCM sidebar React app.                                       |
+| `webview/editor/`         | Three-pane merge editor React app.                           |
+| `test/`                   | Integration tests via `@vscode/test-electron`.               |
+| `test-fixtures/`          | Fixture git repos with real merge conflicts.                 |
+| `docs/superpowers/specs/` | Design documents.                                            |
+| `docs/superpowers/plans/` | Implementation plans.                                        |
+| `out/`                    | Build output (gitignored).                                   |
 
 ## Common commands
 
-| Command                       | Purpose                              |
-|-------------------------------|--------------------------------------|
-| `npm run build`               | Compile host + bundle webview.       |
-| `npm run watch:ext`           | Watch and rebuild the host.          |
-| `npm run watch:webview`       | Watch and rebuild the webview.       |
-| `npm test`                    | Unit tests (host + webview).         |
-| `npm run test:watch`          | Tests in watch mode.                 |
-| `npm run test:integration`    | `@vscode/test-electron` suite.       |
-| `npm run lint`                | ESLint over `src/` and `webview/`.   |
-| `npm run format`              | Prettier write.                      |
+| Command                    | Purpose                            |
+| -------------------------- | ---------------------------------- |
+| `npm run build`            | Compile host + bundle webview.     |
+| `npm run watch:ext`        | Watch and rebuild the host.        |
+| `npm run watch:webview`    | Watch and rebuild the webview.     |
+| `npm test`                 | Unit tests (host + webview).       |
+| `npm run test:watch`       | Tests in watch mode.               |
+| `npm run test:integration` | `@vscode/test-electron` suite.     |
+| `npm run lint`             | ESLint over `src/` and `webview/`. |
+| `npm run format`           | Prettier write.                    |
 
 ## Commit conventions
 
@@ -63,7 +63,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) with these p
 - `refactor:` — internal change with no behavior delta.
 - `test:` — test-only changes.
 
-Keep subject lines under 72 characters. Use the body to explain *why* when the diff alone is not obvious.
+Keep subject lines under 72 characters. Use the body to explain _why_ when the diff alone is not obvious.
 
 ## Pull requests
 
@@ -88,9 +88,9 @@ Use the **Bug report** issue template. Include VS Code version, MergePro version
 
 ### Required GitHub secrets
 
-| Secret      | Source                                                     |
-|-------------|------------------------------------------------------------|
-| `VSCE_PAT`  | Azure DevOps Personal Access Token, scope: `Marketplace > Manage`, for the `ismailcherri` publisher. |
-| `OVSX_PAT`  | open-vsx.org access token for the `ismailcherri` namespace. |
+| Secret     | Source                                                                                               |
+| ---------- | ---------------------------------------------------------------------------------------------------- |
+| `VSCE_PAT` | Azure DevOps Personal Access Token, scope: `Marketplace > Manage`, for the `ismailcherri` publisher. |
+| `OVSX_PAT` | open-vsx.org access token for the `ismailcherri` namespace.                                          |
 
 Test the release pipeline before tagging by running `release.yml` via **Actions → Run workflow → dry_run: true**.

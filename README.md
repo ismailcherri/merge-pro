@@ -57,10 +57,10 @@ code --install-extension merge-pro-0.1.0.vsix
 
 ## Keybindings
 
-| Action            | Default       |
-|-------------------|---------------|
-| Previous conflict | `Alt+Up`      |
-| Next conflict     | `Alt+Down`    |
+| Action            | Default                                        |
+| ----------------- | ---------------------------------------------- |
+| Previous conflict | `Alt+Up`                                       |
+| Next conflict     | `Alt+Down`                                     |
 | Open merge editor | Command Palette: `MergePro: Open Merge Editor` |
 
 ## Configuration
@@ -84,16 +84,16 @@ Press `F5` in VS Code to launch the Extension Development Host.
 
 Useful commands:
 
-| Command                       | Purpose                              |
-|-------------------------------|--------------------------------------|
-| `npm run build`               | Compile host + bundle webview.       |
-| `npm run watch:ext`           | Watch and rebuild the host.          |
-| `npm run watch:webview`       | Watch and rebuild the webview.       |
-| `npm test`                    | Run unit tests (host + webview).     |
-| `npm run test:watch`          | Run tests in watch mode.             |
-| `npm run test:integration`    | Run `@vscode/test-electron` suite.   |
-| `npm run lint`                | ESLint over `src/` and `webview/`.   |
-| `npm run format`              | Format with Prettier.                |
+| Command                    | Purpose                            |
+| -------------------------- | ---------------------------------- |
+| `npm run build`            | Compile host + bundle webview.     |
+| `npm run watch:ext`        | Watch and rebuild the host.        |
+| `npm run watch:webview`    | Watch and rebuild the webview.     |
+| `npm test`                 | Run unit tests (host + webview).   |
+| `npm run test:watch`       | Run tests in watch mode.           |
+| `npm run test:integration` | Run `@vscode/test-electron` suite. |
+| `npm run lint`             | ESLint over `src/` and `webview/`. |
+| `npm run format`           | Format with Prettier.              |
 
 ## Contributing
 

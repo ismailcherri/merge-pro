@@ -26,6 +26,7 @@
 ## Task 1: Add `diff-match-patch` dependency
 
 **Files:**
+
 - Modify: `package.json`
 
 - [ ] **Step 1: Install runtime and types**
@@ -50,6 +51,7 @@ git commit -m "deps: add diff-match-patch for inline diff highlighting"
 ## Task 2: `inlineDiff.ts` — types and empty module
 
 **Files:**
+
 - Create: `webview/editor/inlineDiff.ts`
 - Test: `test/unit/inlineDiff.test.ts`
 
@@ -118,6 +120,7 @@ git commit -m "feat(inline-diff): scaffold computeInlineDiff API"
 ## Task 3: `inlineDiff.ts` — implement char-level diffing
 
 **Files:**
+
 - Modify: `webview/editor/inlineDiff.ts`
 - Modify: `test/unit/inlineDiff.test.ts`
 
@@ -132,38 +135,26 @@ describe('computeInlineDiff — character changes', () => {
         // Left has the '4' as removed; right has the '6' as added.
         // (diff-match-patch may report adjacent equal context as separate
         // equal blocks; we only assert the *change* spans.)
-        expect(r.left).toEqual([
-            { start: 5, end: 6, kind: 'removed' },
-        ])
-        expect(r.right).toEqual([
-            { start: 5, end: 6, kind: 'added' },
-        ])
+        expect(r.left).toEqual([{ start: 5, end: 6, kind: 'removed' }])
+        expect(r.right).toEqual([{ start: 5, end: 6, kind: 'added' }])
     })
 
     it('highlights multi-character substitution', () => {
         const r = computeInlineDiff('"next": "16.2.5",', '"next": "15.1.7",')
         // "16.2.5" -> "15.1.7" at offset 9..15 in both strings.
-        expect(r.left).toEqual([
-            { start: 9, end: 15, kind: 'removed' },
-        ])
-        expect(r.right).toEqual([
-            { start: 9, end: 15, kind: 'added' },
-        ])
+        expect(r.left).toEqual([{ start: 9, end: 15, kind: 'removed' }])
+        expect(r.right).toEqual([{ start: 9, end: 15, kind: 'added' }])
     })
 
     it('highlights pure insertion (right longer than left)', () => {
         const r = computeInlineDiff('foo', 'foobar')
         expect(r.left).toEqual([])
-        expect(r.right).toEqual([
-            { start: 3, end: 6, kind: 'added' },
-        ])
+        expect(r.right).toEqual([{ start: 3, end: 6, kind: 'added' }])
     })
 
     it('highlights pure deletion (left longer than right)', () => {
         const r = computeInlineDiff('foobar', 'foo')
-        expect(r.left).toEqual([
-            { start: 3, end: 6, kind: 'removed' },
-        ])
+        expect(r.left).toEqual([{ start: 3, end: 6, kind: 'removed' }])
         expect(r.right).toEqual([])
     })
 
@@ -219,8 +210,14 @@ export function computeInlineDiff(a: string, b: string): InlineDiffResult {
 
     if (a.length > LONG_LINE_THRESHOLD || b.length > LONG_LINE_THRESHOLD) {
         return {
-            left: a.length > 0 ? [{ start: 0, end: a.length, kind: 'removed' }] : [],
-            right: b.length > 0 ? [{ start: 0, end: b.length, kind: 'added' }] : [],
+            left:
+                a.length > 0
+                    ? [{ start: 0, end: a.length, kind: 'removed' }]
+                    : [],
+            right:
+                b.length > 0
+                    ? [{ start: 0, end: b.length, kind: 'added' }]
+                    : [],
         }
     }
 
@@ -239,11 +236,19 @@ export function computeInlineDiff(a: string, b: string): InlineDiffResult {
             rightPos += text.length
         } else if (op === -1) {
             // DELETE — span exists in `a` only.
-            left.push({ start: leftPos, end: leftPos + text.length, kind: 'removed' })
+            left.push({
+                start: leftPos,
+                end: leftPos + text.length,
+                kind: 'removed',
+            })
             leftPos += text.length
         } else if (op === 1) {
             // INSERT — span exists in `b` only.
-            right.push({ start: rightPos, end: rightPos + text.length, kind: 'added' })
+            right.push({
+                start: rightPos,
+                end: rightPos + text.length,
+                kind: 'added',
+            })
             rightPos += text.length
         }
     }
@@ -269,6 +274,7 @@ git commit -m "feat(inline-diff): implement char-level diff via diff-match-patch
 ## Task 4: `computePaneInlineDecorations.ts` — scaffold & first test
 
 **Files:**
+
 - Create: `webview/editor/computePaneInlineDecorations.ts`
 - Test: `test/unit/computePaneInlineDecorations.test.ts`
 
@@ -366,6 +372,7 @@ git commit -m "feat(inline-diff): scaffold computePaneInlineDecorations"
 ## Task 5: `computePaneInlineDecorations.ts` — pair side-pane lines vs. Result
 
 **Files:**
+
 - Modify: `webview/editor/computePaneInlineDecorations.ts`
 - Modify: `test/unit/computePaneInlineDecorations.test.ts`
 
@@ -593,6 +600,7 @@ git commit -m "feat(inline-diff): pair side-pane lines vs Result for inline deco
 ## Task 6: `computePaneInlineDecorations.ts` — Result pane vs. base
 
 **Files:**
+
 - Modify: `webview/editor/computePaneInlineDecorations.ts`
 - Modify: `test/unit/computePaneInlineDecorations.test.ts`
 
@@ -700,7 +708,9 @@ const baseRange = input.chunkBaseRanges[input.chunkMaps.indexOf(map)]
 if (baseRange) {
     const baseLines = splitLines(input.baseText)
     const baseN =
-        baseRange.end < baseRange.start ? 0 : baseRange.end - baseRange.start + 1
+        baseRange.end < baseRange.start
+            ? 0
+            : baseRange.end - baseRange.start + 1
     const resultBasePairs = Math.min(resultN, baseN)
     for (let k = 0; k < resultBasePairs; k++) {
         const resultLineNo = map.result.start + k
@@ -751,6 +761,7 @@ git commit -m "feat(inline-diff): add Result-vs-base pairing for Result pane"
 ## Task 7: Add CSS styles to `ThreePaneEditor.tsx`
 
 **Files:**
+
 - Modify: `webview/editor/ThreePaneEditor.tsx:55-72`
 
 - [ ] **Step 1: Add the inline-diff CSS classes**
@@ -758,8 +769,18 @@ git commit -m "feat(inline-diff): add Result-vs-base pairing for Result pane"
 In `webview/editor/ThreePaneEditor.tsx`, inside the existing `style.textContent` template literal (currently lines 55–72), append two new rules at the end:
 
 ```css
-.mp-inline-added   { background: var(--vscode-diffEditor-insertedTextBackground, rgba(98,178,98,0.30)); }
-.mp-inline-removed { background: var(--vscode-diffEditor-removedTextBackground,  rgba(220,80,70,0.30)); }
+.mp-inline-added {
+    background: var(
+        --vscode-diffEditor-insertedTextBackground,
+        rgba(98, 178, 98, 0.3)
+    );
+}
+.mp-inline-removed {
+    background: var(
+        --vscode-diffEditor-removedTextBackground,
+        rgba(220, 80, 70, 0.3)
+    );
+}
 ```
 
 So the full `style.textContent` ends with these two new lines just before the closing backtick.
@@ -781,6 +802,7 @@ git commit -m "feat(inline-diff): add CSS classes for inline added/removed spans
 ## Task 8: Wire `computePaneInlineDecorations` into `ThreePaneEditor`
 
 **Files:**
+
 - Modify: `webview/editor/ThreePaneEditor.tsx`
 
 - [ ] **Step 1: Import the new module and add inline decorations memo**
@@ -801,7 +823,7 @@ const chunkBaseRanges = useMemo<ChunkBaseRange[]>(
     () =>
         chunks.map((c) => ({
             start: c.baseStartLine + 1, // baseStartLine is 0-indexed; map to 1-indexed.
-            end: c.baseEndLine,          // baseEndLine is exclusive 0-indexed; inclusive 1-indexed == same number.
+            end: c.baseEndLine, // baseEndLine is exclusive 0-indexed; inclusive 1-indexed == same number.
         })),
     [chunks]
 )
@@ -924,6 +946,7 @@ In the dev host, open `test-fixtures/` (or any repo with a real conflict). Trigg
 - [ ] **Step 4: Verify decisions trigger recompute**
 
 In the same merge editor, click the accept-ours (`»`) button on a chunk. Expected:
+
 - Result line updates to match ours.
 - Ours pane's inline highlights for that chunk disappear (now identical to Result).
 - Theirs pane's inline highlights for that chunk may grow (theirs now differs from the updated Result).
@@ -956,6 +979,7 @@ git commit -m "docs: note inline char-level diff in changelog"
 ## Self-Review Notes
 
 Spec coverage check:
+
 - Comparison basis (sides ↔ Result, Result ↔ base): Tasks 5 and 6.
 - diff-match-patch with semantic cleanup: Task 3.
 - Hybrid word/char via `diff_cleanupSemantic`: Task 3 (relies on library behavior — tests verify representative outputs).

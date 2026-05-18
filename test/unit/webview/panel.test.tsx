@@ -56,7 +56,9 @@ describe('FileItem', () => {
                 isActive={false}
             />
         )
-        expect(screen.getByText(/resolved/i)).toBeTruthy()
+        // Resolved row hides the Resolve button and shows a Review affordance.
+        expect(screen.getByRole('button', { name: /review/i })).toBeTruthy()
+        expect(screen.queryByRole('button', { name: /^resolve$/i })).toBeNull()
     })
 })
 

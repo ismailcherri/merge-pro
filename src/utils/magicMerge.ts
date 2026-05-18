@@ -39,7 +39,8 @@ function diffHunks(a: string[], b: string[]): Hunk[] {
     for (let i = 1; i <= m; i++) {
         for (let j = 1; j <= n; j++) {
             if (a[i - 1] === b[j - 1]) c[i][j] = c[i - 1][j - 1] + 1
-            else c[i][j] = c[i - 1][j] >= c[i][j - 1] ? c[i - 1][j] : c[i][j - 1]
+            else
+                c[i][j] = c[i - 1][j] >= c[i][j - 1] ? c[i - 1][j] : c[i][j - 1]
         }
     }
     // Backtrack to recover matched index pairs.

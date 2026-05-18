@@ -33,21 +33,34 @@ Final shape:
 
 ```jsonc
 {
-  "name": "merge-pro",
-  "displayName": "MergePro",
-  "description": "IntelliJ-style three-pane merge conflict resolver for VS Code.",
-  "version": "0.1.0",
-  "publisher": "ismailcherri",
-  "license": "MIT",
-  "icon": "assets/icon.png",
-  "repository": { "type": "git", "url": "https://github.com/ismailcherri/merge-pro.git" },
-  "bugs":       { "url": "https://github.com/ismailcherri/merge-pro/issues" },
-  "homepage":   "https://github.com/ismailcherri/merge-pro#readme",
-  "qna": "marketplace",
-  "galleryBanner": { "color": "#3C2F2F", "theme": "dark" },
-  "engines": { "vscode": "^1.85.0", "node": ">=20.0.0" },
-  "categories": ["SCM Providers", "Other"],
-  "keywords": ["git", "merge", "conflict", "diff", "three-way", "intellij", "resolve", "merge-tool", "vcs"]
+    "name": "merge-pro",
+    "displayName": "MergePro",
+    "description": "IntelliJ-style three-pane merge conflict resolver for VS Code.",
+    "version": "0.1.0",
+    "publisher": "ismailcherri",
+    "license": "MIT",
+    "icon": "assets/icon.png",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ismailcherri/merge-pro.git",
+    },
+    "bugs": { "url": "https://github.com/ismailcherri/merge-pro/issues" },
+    "homepage": "https://github.com/ismailcherri/merge-pro#readme",
+    "qna": "marketplace",
+    "galleryBanner": { "color": "#3C2F2F", "theme": "dark" },
+    "engines": { "vscode": "^1.85.0", "node": ">=20.0.0" },
+    "categories": ["SCM Providers", "Other"],
+    "keywords": [
+        "git",
+        "merge",
+        "conflict",
+        "diff",
+        "three-way",
+        "intellij",
+        "resolve",
+        "merge-tool",
+        "vcs",
+    ],
 }
 ```
 
@@ -75,9 +88,9 @@ Section order:
 2. Screenshot / GIF placeholder block (`<!-- TODO: screenshots before publish -->`).
 3. **Features** (expanded from current bullets).
 4. **Install** — three install paths:
-   - VS Code Marketplace (`code --install-extension ismailcherri.merge-pro`).
-   - Open VSX (Cursor, VSCodium, Windsurf, code-server).
-   - Sideload `.vsix` from GitHub Releases.
+    - VS Code Marketplace (`code --install-extension ismailcherri.merge-pro`).
+    - Open VSX (Cursor, VSCodium, Windsurf, code-server).
+    - Sideload `.vsix` from GitHub Releases.
 5. **Usage** — step-by-step with screenshot TODOs.
 6. **Keybindings** — table of `Alt+↑` / `Alt+↓` and any future bindings.
 7. **Configuration** — placeholder "no settings yet" section.
@@ -89,13 +102,13 @@ Section order:
 
 - Dev environment: Node ≥20, VS Code ≥1.85.
 - Repo layout:
-  - `src/` — extension host (TypeScript, runs in Node).
-  - `webview/` — React panes (panel + editor), built with Vite.
-  - `src/protocol.ts` — message contract between host and webview.
-  - `test/` — integration tests via `@vscode/test-electron`.
-  - `test-fixtures/` — fixture repos with real merge conflicts.
-  - `docs/superpowers/specs/` — design docs.
-  - `docs/superpowers/plans/` — implementation plans.
+    - `src/` — extension host (TypeScript, runs in Node).
+    - `webview/` — React panes (panel + editor), built with Vite.
+    - `src/protocol.ts` — message contract between host and webview.
+    - `test/` — integration tests via `@vscode/test-electron`.
+    - `test-fixtures/` — fixture repos with real merge conflicts.
+    - `docs/superpowers/specs/` — design docs.
+    - `docs/superpowers/plans/` — implementation plans.
 - Workflow: clone → `npm install` → `F5` in VS Code to launch.
 - Commands: `npm run build`, `npm test`, `npm run test:watch`, `npm run test:integration`, `npm run lint`, `npm run format`.
 - Commit conventions: prefer Conventional Commits (`feat:`, `fix:`, `chore:`) matching existing history.
@@ -112,7 +125,7 @@ AI-contributor doc. Cross-tool standard (Claude Code, Cursor, Copilot, Codex, Ai
 
 - **Architecture map** — extension host (`src/`) ↔ webview (`webview/`) via typed messages in `src/protocol.ts`. `MergeEditorProvider` / `MergePanelProvider` host the webviews; `MergeSessionManager` owns conflict state; `GitService` wraps git CLI.
 - **Build & test commands** — verbatim from `package.json` scripts.
-- **Code conventions** — Prettier config is source of truth (`.prettierrc`). Default to no comments; explain *why* only when non-obvious. File-size signal: when a file grows past ~300 lines or mixes concerns, split.
+- **Code conventions** — Prettier config is source of truth (`.prettierrc`). Default to no comments; explain _why_ only when non-obvious. File-size signal: when a file grows past ~300 lines or mixes concerns, split.
 - **How to add a feature** — pointer to existing specs in `docs/superpowers/specs/` as worked examples; follow the brainstorm → spec → plan → implement flow.
 - **Do not commit** — `out/`, `*.vsix`, `node_modules/`, `test-fixtures/conflict-repo/repo/`.
 
@@ -160,7 +173,7 @@ Job: ubuntu-latest, Node 20. Steps:
 
 **Required secrets** (documented in `CONTRIBUTING.md` release section):
 
-- `VSCE_PAT` — Azure DevOps PAT scoped to *Marketplace > Manage*, for the `ismailcherri` publisher.
+- `VSCE_PAT` — Azure DevOps PAT scoped to _Marketplace > Manage_, for the `ismailcherri` publisher.
 - `OVSX_PAT` — open-vsx.org access token for the `ismailcherri` namespace.
 
 ### 4. Code hardening
@@ -175,13 +188,13 @@ Read `src/providers/MergeEditorProvider.ts` and `src/providers/MergePanelProvide
 
 - A `nonce` is generated per webview load.
 - The CSP `<meta>` tag has shape:
-  ```
-  default-src 'none';
-  img-src ${webview.cspSource} https: data:;
-  script-src 'nonce-${nonce}';
-  style-src ${webview.cspSource} 'unsafe-inline';
-  font-src ${webview.cspSource};
-  ```
+    ```
+    default-src 'none';
+    img-src ${webview.cspSource} https: data:;
+    script-src 'nonce-${nonce}';
+    style-src ${webview.cspSource} 'unsafe-inline';
+    font-src ${webview.cspSource};
+    ```
 - `webview.options = { enableScripts: true, localResourceRoots: [extensionUri] }` (no broader root).
 - All `<script>` tags carry `nonce="${nonce}"`.
 

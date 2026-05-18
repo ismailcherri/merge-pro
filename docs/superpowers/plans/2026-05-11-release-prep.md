@@ -50,6 +50,7 @@
 ## Task 1: Update package.json manifest
 
 **Files:**
+
 - Modify: `package.json`
 
 - [ ] **Step 1: Read current package.json**
@@ -130,6 +131,7 @@ git commit -m "chore: update manifest for v0.1 marketplace release"
 ## Task 2: Add placeholder icon
 
 **Files:**
+
 - Create: `assets/icon.png`
 
 - [ ] **Step 1: Create assets directory**
@@ -142,11 +144,13 @@ Expected: directory created.
 The icon must be a 128x128 PNG. Use ImageMagick if available, otherwise the inline Node script below produces a solid-color PNG using only Node standard library (no dependencies).
 
 Run (if ImageMagick installed):
+
 ```bash
 convert -size 128x128 xc:'#3C2F2F' -gravity center -fill '#E8D5C4' -font Helvetica-Bold -pointsize 56 -annotate +0+0 'MP' assets/icon.png
 ```
 
 Otherwise run:
+
 ```bash
 node -e "
 const fs=require('fs'),zlib=require('zlib');
@@ -182,12 +186,14 @@ git commit -m "chore: add placeholder marketplace icon"
 ## Task 3: Audit and update .vscodeignore
 
 **Files:**
+
 - Modify: `.vscodeignore`
 
 - [ ] **Step 1: Read current .vscodeignore**
 
 Run: `cat .vscodeignore`
 Expected:
+
 ```
 .vscode/**
 node_modules/**
@@ -284,9 +290,11 @@ No commit for this task — it is verification only.
 ## Task 5: Fix MergePanelProvider nonce entropy and CSP
 
 **Files:**
+
 - Modify: `src/providers/MergePanelProvider.ts`
 
 **Context:** CSP audit of `MergePanelProvider.ts` found two issues:
+
 1. The nonce generator uses `Math.random()`, which is not cryptographically secure. A predictable nonce defeats the purpose of CSP. `MergeEditorProvider.ts` already uses `randomBytes(16).toString('base64url')` from the `crypto` module — we will align on that pattern.
 2. The CSP omits `style-src`. The webview React bundle injects styles, which currently work only because the default-src fallback is `'none'` and the browser permits inline UA styles — but any future styled-component or inline style attribute will be blocked silently.
 
@@ -333,13 +341,19 @@ function getNonce(): string {
 In the `getHtml` method (around line 83), change the CSP line from:
 
 ```html
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}' 'strict-dynamic';">
+<meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'none'; script-src 'nonce-${nonce}' 'strict-dynamic';"
+/>
 ```
 
 to:
 
 ```html
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}' 'strict-dynamic'; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource} data:; img-src ${webview.cspSource} https: data:;">
+<meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'none'; script-src 'nonce-${nonce}' 'strict-dynamic'; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource} data:; img-src ${webview.cspSource} https: data:;"
+/>
 ```
 
 - [ ] **Step 4: Type-check**
@@ -355,6 +369,7 @@ Expected: all tests pass. There are no tests targeting the nonce specifically; t
 - [ ] **Step 6: Manual smoke test**
 
 Open VS Code in the repo, press F5 to launch the Extension Development Host. In the host window:
+
 1. Open a workspace containing a fixture from `test-fixtures/` (or any folder with a conflict).
 2. Open the Source Control sidebar — confirm the MergePro panel renders.
 3. Open VS Code's Webview Developer Tools (Command Palette → `Developer: Open Webview Developer Tools`).
@@ -375,6 +390,7 @@ git commit -m "fix: use crypto-secure nonce and complete CSP in panel webview"
 ## Task 6: Add .vscode/extensions.json and tasks.json
 
 **Files:**
+
 - Create: `.vscode/extensions.json`
 - Create: `.vscode/tasks.json`
 
@@ -384,10 +400,7 @@ Write to `.vscode/extensions.json`:
 
 ```json
 {
-    "recommendations": [
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode"
-    ]
+    "recommendations": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
 }
 ```
 
@@ -432,6 +445,7 @@ git commit -m "chore: add VS Code extension recommendations and build task"
 ## Task 7: Write the new README.md
 
 **Files:**
+
 - Modify: `README.md`
 
 - [ ] **Step 1: Overwrite README.md**
@@ -498,10 +512,10 @@ code --install-extension merge-pro-0.1.0.vsix
 
 ## Keybindings
 
-| Action            | Default       |
-|-------------------|---------------|
-| Previous conflict | `Alt+Up`      |
-| Next conflict     | `Alt+Down`    |
+| Action            | Default                                        |
+| ----------------- | ---------------------------------------------- |
+| Previous conflict | `Alt+Up`                                       |
+| Next conflict     | `Alt+Down`                                     |
 | Open merge editor | Command Palette: `MergePro: Open Merge Editor` |
 
 ## Configuration
@@ -525,16 +539,16 @@ Press `F5` in VS Code to launch the Extension Development Host.
 
 Useful commands:
 
-| Command                       | Purpose                              |
-|-------------------------------|--------------------------------------|
-| `npm run build`               | Compile host + bundle webview.       |
-| `npm run watch:ext`           | Watch and rebuild the host.          |
-| `npm run watch:webview`       | Watch and rebuild the webview.       |
-| `npm test`                    | Run unit tests (host + webview).     |
-| `npm run test:watch`          | Run tests in watch mode.             |
-| `npm run test:integration`    | Run `@vscode/test-electron` suite.   |
-| `npm run lint`                | ESLint over `src/` and `webview/`.   |
-| `npm run format`              | Format with Prettier.                |
+| Command                    | Purpose                            |
+| -------------------------- | ---------------------------------- |
+| `npm run build`            | Compile host + bundle webview.     |
+| `npm run watch:ext`        | Watch and rebuild the host.        |
+| `npm run watch:webview`    | Watch and rebuild the webview.     |
+| `npm test`                 | Run unit tests (host + webview).   |
+| `npm run test:watch`       | Run tests in watch mode.           |
+| `npm run test:integration` | Run `@vscode/test-electron` suite. |
+| `npm run lint`             | ESLint over `src/` and `webview/`. |
+| `npm run format`           | Format with Prettier.              |
 
 ## Contributing
 
@@ -564,6 +578,7 @@ git commit -m "docs: rewrite README for v0.1 release"
 ## Task 8: Add CONTRIBUTING.md
 
 **Files:**
+
 - Create: `CONTRIBUTING.md`
 
 - [ ] **Step 1: Create CONTRIBUTING.md**
@@ -595,35 +610,35 @@ Press `F5` in VS Code to launch the Extension Development Host with the local bu
 
 ## Repository layout
 
-| Path                        | Purpose                                              |
-|-----------------------------|------------------------------------------------------|
-| `src/`                      | Extension host (Node, TypeScript).                   |
-| `src/protocol.ts`           | Typed message contract between host and webview.    |
-| `src/providers/`            | Webview hosts (`MergePanelProvider`, `MergeEditorProvider`). |
-| `src/services/`             | Domain services (`GitService`, `MergeSessionManager`). |
-| `src/parsers/`              | Conflict marker parsing.                             |
-| `src/utils/`                | Pure helpers.                                        |
-| `webview/`                  | React UIs for the panel and editor.                  |
-| `webview/panel/`            | SCM sidebar React app.                               |
-| `webview/editor/`           | Three-pane merge editor React app.                   |
-| `test/`                     | Integration tests via `@vscode/test-electron`.       |
-| `test-fixtures/`            | Fixture git repos with real merge conflicts.         |
-| `docs/superpowers/specs/`   | Design documents.                                    |
-| `docs/superpowers/plans/`   | Implementation plans.                                |
-| `out/`                      | Build output (gitignored).                           |
+| Path                      | Purpose                                                      |
+| ------------------------- | ------------------------------------------------------------ |
+| `src/`                    | Extension host (Node, TypeScript).                           |
+| `src/protocol.ts`         | Typed message contract between host and webview.             |
+| `src/providers/`          | Webview hosts (`MergePanelProvider`, `MergeEditorProvider`). |
+| `src/services/`           | Domain services (`GitService`, `MergeSessionManager`).       |
+| `src/parsers/`            | Conflict marker parsing.                                     |
+| `src/utils/`              | Pure helpers.                                                |
+| `webview/`                | React UIs for the panel and editor.                          |
+| `webview/panel/`          | SCM sidebar React app.                                       |
+| `webview/editor/`         | Three-pane merge editor React app.                           |
+| `test/`                   | Integration tests via `@vscode/test-electron`.               |
+| `test-fixtures/`          | Fixture git repos with real merge conflicts.                 |
+| `docs/superpowers/specs/` | Design documents.                                            |
+| `docs/superpowers/plans/` | Implementation plans.                                        |
+| `out/`                    | Build output (gitignored).                                   |
 
 ## Common commands
 
-| Command                       | Purpose                              |
-|-------------------------------|--------------------------------------|
-| `npm run build`               | Compile host + bundle webview.       |
-| `npm run watch:ext`           | Watch and rebuild the host.          |
-| `npm run watch:webview`       | Watch and rebuild the webview.       |
-| `npm test`                    | Unit tests (host + webview).         |
-| `npm run test:watch`          | Tests in watch mode.                 |
-| `npm run test:integration`    | `@vscode/test-electron` suite.       |
-| `npm run lint`                | ESLint over `src/` and `webview/`.   |
-| `npm run format`              | Prettier write.                      |
+| Command                    | Purpose                            |
+| -------------------------- | ---------------------------------- |
+| `npm run build`            | Compile host + bundle webview.     |
+| `npm run watch:ext`        | Watch and rebuild the host.        |
+| `npm run watch:webview`    | Watch and rebuild the webview.     |
+| `npm test`                 | Unit tests (host + webview).       |
+| `npm run test:watch`       | Tests in watch mode.               |
+| `npm run test:integration` | `@vscode/test-electron` suite.     |
+| `npm run lint`             | ESLint over `src/` and `webview/`. |
+| `npm run format`           | Prettier write.                    |
 
 ## Commit conventions
 
@@ -636,7 +651,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) with these p
 - `refactor:` — internal change with no behavior delta.
 - `test:` — test-only changes.
 
-Keep subject lines under 72 characters. Use the body to explain *why* when the diff alone is not obvious.
+Keep subject lines under 72 characters. Use the body to explain _why_ when the diff alone is not obvious.
 
 ## Pull requests
 
@@ -661,10 +676,10 @@ Use the **Bug report** issue template. Include VS Code version, MergePro version
 
 ### Required GitHub secrets
 
-| Secret      | Source                                                     |
-|-------------|------------------------------------------------------------|
-| `VSCE_PAT`  | Azure DevOps Personal Access Token, scope: `Marketplace > Manage`, for the `ismailcherri` publisher. |
-| `OVSX_PAT`  | open-vsx.org access token for the `ismailcherri` namespace. |
+| Secret     | Source                                                                                               |
+| ---------- | ---------------------------------------------------------------------------------------------------- |
+| `VSCE_PAT` | Azure DevOps Personal Access Token, scope: `Marketplace > Manage`, for the `ismailcherri` publisher. |
+| `OVSX_PAT` | open-vsx.org access token for the `ismailcherri` namespace.                                          |
 
 Test the release pipeline before tagging by running `release.yml` via **Actions → Run workflow → dry_run: true**.
 ````
@@ -681,6 +696,7 @@ git commit -m "docs: add CONTRIBUTING guide"
 ## Task 9: Add CODE_OF_CONDUCT.md
 
 **Files:**
+
 - Create: `CODE_OF_CONDUCT.md`
 
 - [ ] **Step 1: Create CODE_OF_CONDUCT.md**
@@ -702,6 +718,7 @@ ismailcherri@gmail.com.
 The full document is too long to inline here; fetch the canonical Markdown from `https://raw.githubusercontent.com/EthicalSource/contributor_covenant/release/content/version/2/1/code_of_conduct.md` and replace the placeholder enforcement email line.
 
 Run:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/EthicalSource/contributor_covenant/release/content/version/2/1/code_of_conduct.md -o CODE_OF_CONDUCT.md
 ```
@@ -725,6 +742,7 @@ git commit -m "docs: add Contributor Covenant 2.1"
 ## Task 10: Add AGENTS.md
 
 **Files:**
+
 - Create: `AGENTS.md`
 
 - [ ] **Step 1: Create AGENTS.md**
@@ -741,7 +759,7 @@ Guidance for AI coding assistants (Claude Code, Cursor, GitHub Copilot, Codex, A
 - Read the spec for any non-trivial change before editing code: `docs/superpowers/specs/`.
 - Tests live next to the code they cover. Run `npm test` before claiming a task is done.
 - Never commit `out/`, `*.vsix`, `node_modules/`, or anything under `test-fixtures/conflict-repo/repo/`.
-- Default to no comments. Explain *why* only when the reason is non-obvious.
+- Default to no comments. Explain _why_ only when the reason is non-obvious.
 
 ## Architecture map
 
@@ -762,14 +780,14 @@ Key types and contracts live in `src/protocol.ts` and `src/types.ts`. Treat the 
 
 ## Build, test, lint
 
-| Goal              | Command                          |
-|-------------------|----------------------------------|
+| Goal              | Command                             |
+| ----------------- | ----------------------------------- |
 | Type-check        | `npx tsc -p tsconfig.json --noEmit` |
-| Full build        | `npm run build`                  |
-| Unit tests        | `npm test`                       |
-| Integration tests | `npm run test:integration`       |
-| Lint              | `npm run lint`                   |
-| Format            | `npm run format`                 |
+| Full build        | `npm run build`                     |
+| Unit tests        | `npm test`                          |
+| Integration tests | `npm run test:integration`          |
+| Lint              | `npm run lint`                      |
+| Format            | `npm run format`                    |
 
 CI runs lint, unit, integration, and a `vsce package --no-dependencies` dry-run on every PR. Do not push without these passing locally.
 
@@ -777,7 +795,7 @@ CI runs lint, unit, integration, and a `vsce package --no-dependencies` dry-run 
 
 - **Prettier is the source of truth** for formatting (`.prettierrc`). Run `npm run format` before committing.
 - **TypeScript strict mode is on.** Do not weaken types to silence errors.
-- **Default to no comments.** A well-named identifier beats a comment. Add a one-line comment only when the *why* is non-obvious (a workaround, a subtle invariant, a perf trade-off).
+- **Default to no comments.** A well-named identifier beats a comment. Add a one-line comment only when the _why_ is non-obvious (a workaround, a subtle invariant, a perf trade-off).
 - **No multi-paragraph docstrings.** One line max.
 - **File-size signal:** if a file grows past ~300 lines or starts mixing responsibilities, split it. Files that change together live together; split by responsibility, not by technical layer.
 - **No defensive code at internal boundaries.** Trust your callers. Validate only at system boundaries (user input, git CLI output, message protocol entry).
@@ -817,6 +835,7 @@ git commit -m "docs: add AGENTS.md for AI contributor guidance"
 ## Task 11: Add GitHub issue templates
 
 **Files:**
+
 - Create: `.github/ISSUE_TEMPLATE/bug_report.yml`
 - Create: `.github/ISSUE_TEMPLATE/feature_request.yml`
 - Create: `.github/ISSUE_TEMPLATE/config.yml`
@@ -899,25 +918,25 @@ description: Suggest an enhancement or new capability
 title: 'feat: '
 labels: ['enhancement', 'triage']
 body:
-  - type: textarea
-    id: problem
-    attributes:
-      label: Problem
-      description: What user-facing problem are you trying to solve?
-    validations:
-      required: true
-  - type: textarea
-    id: proposal
-    attributes:
-      label: Proposed solution
-      description: How would you like MergePro to behave?
-    validations:
-      required: true
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives considered
-      description: Other approaches you have thought about and why they fall short.
+    - type: textarea
+      id: problem
+      attributes:
+          label: Problem
+          description: What user-facing problem are you trying to solve?
+      validations:
+          required: true
+    - type: textarea
+      id: proposal
+      attributes:
+          label: Proposed solution
+          description: How would you like MergePro to behave?
+      validations:
+          required: true
+    - type: textarea
+      id: alternatives
+      attributes:
+          label: Alternatives considered
+          description: Other approaches you have thought about and why they fall short.
 ```
 
 - [ ] **Step 4: Create config.yml**
@@ -927,9 +946,9 @@ Write to `.github/ISSUE_TEMPLATE/config.yml`:
 ```yaml
 blank_issues_enabled: false
 contact_links:
-  - name: Question or discussion
-    url: https://github.com/ismailcherri/merge-pro/discussions
-    about: For questions and general discussion, please use GitHub Discussions.
+    - name: Question or discussion
+      url: https://github.com/ismailcherri/merge-pro/discussions
+      about: For questions and general discussion, please use GitHub Discussions.
 ```
 
 - [ ] **Step 5: Commit**
@@ -944,6 +963,7 @@ git commit -m "chore: add GitHub issue templates"
 ## Task 12: Add pull request template
 
 **Files:**
+
 - Create: `.github/PULL_REQUEST_TEMPLATE.md`
 
 - [ ] **Step 1: Create PULL_REQUEST_TEMPLATE.md**
@@ -983,6 +1003,7 @@ git commit -m "chore: add pull request template"
 ## Task 13: Reformat CHANGELOG.md
 
 **Files:**
+
 - Modify: `CHANGELOG.md`
 
 - [ ] **Step 1: Overwrite CHANGELOG.md**
@@ -1030,6 +1051,7 @@ git commit -m "docs: reformat CHANGELOG to Keep-a-Changelog"
 ## Task 14: Extend ci.yml with lint and integration steps
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 
 - [ ] **Step 1: Overwrite ci.yml**
@@ -1099,6 +1121,7 @@ git commit -m "ci: run lint and integration tests in CI"
 ## Task 15: Add release.yml
 
 **Files:**
+
 - Create: `.github/workflows/release.yml`
 
 - [ ] **Step 1: Create release.yml**
@@ -1170,6 +1193,7 @@ jobs:
 Run: `node -e "require('js-yaml')" 2>/dev/null || npm exec --yes -- js-yaml .github/workflows/release.yml > /dev/null`
 
 If `js-yaml` is unavailable, use:
+
 ```bash
 python3 -c "import yaml; yaml.safe_load(open('.github/workflows/release.yml'))"
 ```

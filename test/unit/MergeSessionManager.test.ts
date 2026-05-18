@@ -223,9 +223,10 @@ describe('MergeSessionManager', () => {
                 .mockResolvedValueOnce('a\nX\nc')
                 .mockResolvedValueOnce('a\nb\nc')
                 .mockResolvedValueOnce('a\nY\nc')
-            await mgr.refreshFile(
-                { fsPath: '/repo/foo.ts', toString: () => '/repo/foo.ts' } as never
-            )
+            await mgr.refreshFile({
+                fsPath: '/repo/foo.ts',
+                toString: () => '/repo/foo.ts',
+            } as never)
             expect(mgr.canUndo(uri)).toBe(false)
             expect(mgr.canRedo(uri)).toBe(false)
         })

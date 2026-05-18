@@ -18,7 +18,15 @@ interface Props {
 
 export const EditorPane = forwardRef<EditorPaneHandle, Props>(
     function EditorPane(
-        { value, language, readOnly, decorations, showScrollbar, onDidScrollChange, onMount },
+        {
+            value,
+            language,
+            readOnly,
+            decorations,
+            showScrollbar,
+            onDidScrollChange,
+            onMount,
+        },
         ref
     ) {
         const containerRef = useRef<HTMLDivElement>(null)

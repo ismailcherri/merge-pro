@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { computeInlineDiff } from '../../webview/editor/inlineDiff'
 
 describe('computeInlineDiff', () => {
@@ -13,38 +13,26 @@ describe('computeInlineDiff — character changes', () => {
     it('highlights single-character substitution (version bump)', () => {
         // "^2.1.4", -> "^2.1.6", : char at index 6 ('4' vs '6').
         const r = computeInlineDiff('"^2.1.4",', '"^2.1.6",')
-        expect(r.left).toEqual([
-            { start: 6, end: 7, kind: 'removed' },
-        ])
-        expect(r.right).toEqual([
-            { start: 6, end: 7, kind: 'added' },
-        ])
+        expect(r.left).toEqual([{ start: 6, end: 7, kind: 'removed' }])
+        expect(r.right).toEqual([{ start: 6, end: 7, kind: 'added' }])
     })
 
     it('highlights multi-character substitution', () => {
         // Semantic cleanup collapses to a 5-char run "6.2.5" -> "5.1.7".
         const r = computeInlineDiff('"next": "16.2.5",', '"next": "15.1.7",')
-        expect(r.left).toEqual([
-            { start: 10, end: 15, kind: 'removed' },
-        ])
-        expect(r.right).toEqual([
-            { start: 10, end: 15, kind: 'added' },
-        ])
+        expect(r.left).toEqual([{ start: 10, end: 15, kind: 'removed' }])
+        expect(r.right).toEqual([{ start: 10, end: 15, kind: 'added' }])
     })
 
     it('highlights pure insertion (right longer than left)', () => {
         const r = computeInlineDiff('foo', 'foobar')
         expect(r.left).toEqual([])
-        expect(r.right).toEqual([
-            { start: 3, end: 6, kind: 'added' },
-        ])
+        expect(r.right).toEqual([{ start: 3, end: 6, kind: 'added' }])
     })
 
     it('highlights pure deletion (left longer than right)', () => {
         const r = computeInlineDiff('foobar', 'foo')
-        expect(r.left).toEqual([
-            { start: 3, end: 6, kind: 'removed' },
-        ])
+        expect(r.left).toEqual([{ start: 3, end: 6, kind: 'removed' }])
         expect(r.right).toEqual([])
     })
 

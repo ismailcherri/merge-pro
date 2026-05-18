@@ -6,8 +6,8 @@ import {
     type SideDecision,
 } from '../protocol'
 import type { FileConflictState, SessionState } from '../types'
-import type { GitService } from './GitService'
 import { magicMerge } from '../utils/magicMerge'
+import type { GitService } from './GitService'
 
 /** Snapshot of just the mutable decision metadata for every chunk in a file. */
 type DecisionSnapshot = Array<
@@ -156,7 +156,8 @@ export class MergeSessionManager implements vscode.Disposable {
         if (!state) return
         this.pushUndoSnapshot(uri, state)
         state.chunks = state.chunks.map((chunk) => {
-            if (chunk.type !== 'conflict' || isChunkResolved(chunk)) return chunk
+            if (chunk.type !== 'conflict' || isChunkResolved(chunk))
+                return chunk
             return acceptOnly(chunk, side)
         })
         state.resolvedChunks = state.chunks.filter(isChunkResolved).length

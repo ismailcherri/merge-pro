@@ -109,7 +109,10 @@ export function DecisionButtons({
                     } else {
                         band.style.display = ''
                         band.setAttribute('y', String(top))
-                        band.setAttribute('height', String(Math.max(0, bot - top)))
+                        band.setAttribute(
+                            'height',
+                            String(Math.max(0, bot - top))
+                        )
                     }
                 }
                 if (grp) {
@@ -127,7 +130,10 @@ export function DecisionButtons({
                             top + BTN_TOP_PAD,
                             Math.max(top, bot - BTN_H)
                         )
-                        grp.setAttribute('transform', `translate(${btnX}, ${btnY})`)
+                        grp.setAttribute(
+                            'transform',
+                            `translate(${btnX}, ${btnY})`
+                        )
                     }
                 }
             }
@@ -172,9 +178,7 @@ export function DecisionButtons({
                         : FILL_NONCONFLICT
                 const chunk = chunks[v.chunkIndex]
                 const sideDecision =
-                    side === 'ours'
-                        ? chunk.oursDecision
-                        : chunk.theirsDecision
+                    side === 'ours' ? chunk.oursDecision : chunk.theirsDecision
                 const single = singleChangedSide(chunk)
                 const sideHasChange = single === null || single === side
                 const showButtons = !v.isResolved && sideHasChange
@@ -199,72 +203,90 @@ export function DecisionButtons({
                             style={{ display: 'none' }}
                         />
                         {showButtons && (
-                <g
-                    ref={(el) => {
-                        groupRefs.current[v.chunkIndex] = el
-                    }}
-                    style={{ display: 'none' }}
-                >
-                        <g
-                            transform={`translate(${acceptIdx * (BTN_W + BTN_GAP)}, 0)`}
-                            style={{ cursor: 'pointer', opacity: acceptOpacity }}
-                            onClick={() =>
-                                onDecision?.(v.chunkIndex, side, 'accept')
-                            }
-                        >
-                            <title>Accept this side&apos;s change</title>
-                            <rect
-                                width={BTN_W}
-                                height={BTN_H}
-                                rx={3}
-                                fill="transparent"
-                            />
-                            <text
-                                x={BTN_W / 2}
-                                y={BTN_H * 0.72}
-                                textAnchor="middle"
-                                fontSize={11}
-                                fontFamily="'SF Mono', Consolas, monospace"
-                                fontWeight="bold"
-                                fill="rgba(255,255,255,0.95)"
-                                style={{
-                                    userSelect: 'none',
-                                    pointerEvents: 'none',
+                            <g
+                                ref={(el) => {
+                                    groupRefs.current[v.chunkIndex] = el
                                 }}
+                                style={{ display: 'none' }}
                             >
-                                {acceptArrow}
-                            </text>
-                        </g>
-                        <g
-                            transform={`translate(${discardIdx * (BTN_W + BTN_GAP)}, 0)`}
-                            style={{ cursor: 'pointer', opacity: discardOpacity }}
-                            onClick={() =>
-                                onDecision?.(v.chunkIndex, side, 'discard')
-                            }
-                        >
-                            <title>Discard this side&apos;s change</title>
-                            <rect
-                                width={BTN_W}
-                                height={BTN_H}
-                                rx={3}
-                                fill="transparent"
-                            />
-                            <text
-                                x={BTN_W / 2}
-                                y={BTN_H * 0.72}
-                                textAnchor="middle"
-                                fontSize={10}
-                                fontFamily="'SF Mono', Consolas, monospace"
-                                fontWeight="bold"
-                                fill="rgba(255,255,255,0.95)"
-                                style={{
-                                    userSelect: 'none',
-                                    pointerEvents: 'none',
-                                }}
-                            >
-                                x
-                            </text>
-                        </g>
+                                <g
+                                    transform={`translate(${acceptIdx * (BTN_W + BTN_GAP)}, 0)`}
+                                    style={{
+                                        cursor: 'pointer',
+                                        opacity: acceptOpacity,
+                                    }}
+                                    onClick={() =>
+                                        onDecision?.(
+                                            v.chunkIndex,
+                                            side,
+                                            'accept'
+                                        )
+                                    }
+                                >
+                                    <title>
+                                        Accept this side&apos;s change
+                                    </title>
+                                    <rect
+                                        width={BTN_W}
+                                        height={BTN_H}
+                                        rx={3}
+                                        fill="transparent"
+                                    />
+                                    <text
+                                        x={BTN_W / 2}
+                                        y={BTN_H * 0.72}
+                                        textAnchor="middle"
+                                        fontSize={11}
+                                        fontFamily="'SF Mono', Consolas, monospace"
+                                        fontWeight="bold"
+                                        fill="rgba(255,255,255,0.95)"
+                                        style={{
+                                            userSelect: 'none',
+                                            pointerEvents: 'none',
+                                        }}
+                                    >
+                                        {acceptArrow}
+                                    </text>
+                                </g>
+                                <g
+                                    transform={`translate(${discardIdx * (BTN_W + BTN_GAP)}, 0)`}
+                                    style={{
+                                        cursor: 'pointer',
+                                        opacity: discardOpacity,
+                                    }}
+                                    onClick={() =>
+                                        onDecision?.(
+                                            v.chunkIndex,
+                                            side,
+                                            'discard'
+                                        )
+                                    }
+                                >
+                                    <title>
+                                        Discard this side&apos;s change
+                                    </title>
+                                    <rect
+                                        width={BTN_W}
+                                        height={BTN_H}
+                                        rx={3}
+                                        fill="transparent"
+                                    />
+                                    <text
+                                        x={BTN_W / 2}
+                                        y={BTN_H * 0.72}
+                                        textAnchor="middle"
+                                        fontSize={10}
+                                        fontFamily="'SF Mono', Consolas, monospace"
+                                        fontWeight="bold"
+                                        fill="rgba(255,255,255,0.95)"
+                                        style={{
+                                            userSelect: 'none',
+                                            pointerEvents: 'none',
+                                        }}
+                                    >
+                                        x
+                                    </text>
+                                </g>
                             </g>
                         )}
                     </g>

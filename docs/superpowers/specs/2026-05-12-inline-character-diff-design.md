@@ -31,8 +31,11 @@ Use **`diff-match-patch`** (Google's library) with `diff_cleanupSemantic()`. The
 A pure function wrapping `diff-match-patch`:
 
 ```ts
-type DiffSpan = { start: number; end: number; kind: 'added' | 'removed' };
-function computeInlineDiff(a: string, b: string): { left: DiffSpan[]; right: DiffSpan[] };
+type DiffSpan = { start: number; end: number; kind: 'added' | 'removed' }
+function computeInlineDiff(
+    a: string,
+    b: string
+): { left: DiffSpan[]; right: DiffSpan[] }
 ```
 
 The `left` spans correspond to ranges in `a` (typically the side-pane line); `right` spans correspond to ranges in `b` (the Result/base line). Lines longer than 1000 characters short-circuit and return whole-line spans (see Performance below).
@@ -71,14 +74,14 @@ Both layer on top of the existing line bands and inherit the user's VS Code them
 
 ## Edge cases
 
-| Case | Behavior |
-|---|---|
-| Pure insertion / deletion (one side has the line, other doesn't) | Whole-line band only; no inline spans. |
-| Whitespace-only difference | Highlighted normally; `diff_cleanupSemantic` produces clean output. |
-| Multi-line chunks where N ≠ M lines per side | Pair greedily by index up to `min(N, M)`; trailing lines on the longer side get the whole-line band only. |
-| Manual edits in Result | Re-diff against base on the next chunk-state tick; highlights update live. |
-| Lines > 1000 chars | Fall back to a single whole-line inline span. |
-| Binary / non-text content | Out of scope; existing MergePro behavior unchanged. |
+| Case                                                             | Behavior                                                                                                  |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Pure insertion / deletion (one side has the line, other doesn't) | Whole-line band only; no inline spans.                                                                    |
+| Whitespace-only difference                                       | Highlighted normally; `diff_cleanupSemantic` produces clean output.                                       |
+| Multi-line chunks where N ≠ M lines per side                     | Pair greedily by index up to `min(N, M)`; trailing lines on the longer side get the whole-line band only. |
+| Manual edits in Result                                           | Re-diff against base on the next chunk-state tick; highlights update live.                                |
+| Lines > 1000 chars                                               | Fall back to a single whole-line inline span.                                                             |
+| Binary / non-text content                                        | Out of scope; existing MergePro behavior unchanged.                                                       |
 
 ## Out of scope
 

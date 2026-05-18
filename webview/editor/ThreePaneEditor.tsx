@@ -6,7 +6,11 @@ import {
     type SideDecision,
 } from '../../src/protocol'
 import { resolveFile } from '../../src/utils/ConflictResolver'
-import { buildDisplayDocuments, ChunkLineMap, LineRange } from './buildDisplayDocuments'
+import {
+    buildDisplayDocuments,
+    ChunkLineMap,
+    LineRange,
+} from './buildDisplayDocuments'
 import {
     computePaneInlineDecorations,
     type ChunkBaseRange,
@@ -14,9 +18,9 @@ import {
 import { DecisionButtons } from './DecisionButtons'
 import { EditorPane, EditorPaneHandle } from './EditorPane'
 import { GutterConnector } from './GutterConnector'
+import { mapLine, Pane } from './lineMapping'
 import { LineNumberStrip } from './LineNumberStrip'
 import { MagicWandColumn } from './MagicWandColumn'
-import { mapLine, Pane } from './lineMapping'
 import { Toolbar } from './Toolbar'
 
 interface Props {
@@ -110,7 +114,12 @@ function buildPaneDecorations(
                     : 'nonconflict'
             if (range.start > 1) {
                 out.push({
-                    range: new monaco.Range(range.start - 1, 1, range.start - 1, 1),
+                    range: new monaco.Range(
+                        range.start - 1,
+                        1,
+                        range.start - 1,
+                        1
+                    ),
                     options: {
                         isWholeLine: true,
                         className: `merge-empty-${variant}-bottom`,
@@ -142,7 +151,9 @@ function buildPaneDecorations(
                   ? 'merge-theirs-conflict'
                   : 'merge-theirs-nonconflicting'
         } else {
-            className = isResolved ? 'merge-result-resolved' : 'merge-result-unresolved'
+            className = isResolved
+                ? 'merge-result-resolved'
+                : 'merge-result-unresolved'
         }
 
         out.push({
@@ -181,7 +192,8 @@ export function ThreePaneEditor({
     const syncingRef = useRef(false)
 
     const conflictChunks = useMemo(
-        () => chunks.filter((c) => c.type === 'conflict' && !isChunkResolved(c)),
+        () =>
+            chunks.filter((c) => c.type === 'conflict' && !isChunkResolved(c)),
         [chunks]
     )
     const totalConflicts = conflictChunks.length
@@ -400,7 +412,9 @@ export function ThreePaneEditor({
                 onUndo={onUndo}
                 onRedo={onRedo}
                 onSave={() => {
-                    const resultContent = centerRef.current?.getEditor()?.getValue()
+                    const resultContent = centerRef.current
+                        ?.getEditor()
+                        ?.getValue()
                     onSave(resultContent ?? resolveFile(baseText, chunks))
                 }}
             />

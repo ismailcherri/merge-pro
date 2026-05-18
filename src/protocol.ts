@@ -48,7 +48,9 @@ export function isChunkResolved(chunk: ConflictChunk): boolean {
     const single = singleChangedSide(chunk)
     if (single === 'ours') return chunk.oursDecision !== undefined
     if (single === 'theirs') return chunk.theirsDecision !== undefined
-    return chunk.oursDecision !== undefined && chunk.theirsDecision !== undefined
+    return (
+        chunk.oursDecision !== undefined && chunk.theirsDecision !== undefined
+    )
 }
 
 /**

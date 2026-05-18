@@ -3,17 +3,29 @@ import { magicMerge } from '../../src/utils/magicMerge'
 
 describe('magicMerge', () => {
     it('returns ours when both sides made the identical change', () => {
-        const merged = magicMerge(['a', 'b', 'c'], ['a', 'X', 'c'], ['a', 'X', 'c'])
+        const merged = magicMerge(
+            ['a', 'b', 'c'],
+            ['a', 'X', 'c'],
+            ['a', 'X', 'c']
+        )
         expect(merged).toEqual(['a', 'X', 'c'])
     })
 
     it('returns theirs when ours equals base (only theirs changed)', () => {
-        const merged = magicMerge(['a', 'b', 'c'], ['a', 'b', 'c'], ['a', 'X', 'c'])
+        const merged = magicMerge(
+            ['a', 'b', 'c'],
+            ['a', 'b', 'c'],
+            ['a', 'X', 'c']
+        )
         expect(merged).toEqual(['a', 'X', 'c'])
     })
 
     it('returns ours when theirs equals base (only ours changed)', () => {
-        const merged = magicMerge(['a', 'b', 'c'], ['a', 'X', 'c'], ['a', 'b', 'c'])
+        const merged = magicMerge(
+            ['a', 'b', 'c'],
+            ['a', 'X', 'c'],
+            ['a', 'b', 'c']
+        )
         expect(merged).toEqual(['a', 'X', 'c'])
     })
 
@@ -22,14 +34,26 @@ describe('magicMerge', () => {
         const base = ['a', 'b', 'c', 'd', 'e']
         const ours = ['a', 'B', 'c', 'd', 'e'] // edits line 2
         const theirs = ['a', 'b', 'c', 'D', 'e'] // edits line 4
-        expect(magicMerge(base, ours, theirs)).toEqual(['a', 'B', 'c', 'D', 'e'])
+        expect(magicMerge(base, ours, theirs)).toEqual([
+            'a',
+            'B',
+            'c',
+            'D',
+            'e',
+        ])
     })
 
     it('merges disjoint insertions at different anchors', () => {
         const base = ['a', 'b', 'c']
         const ours = ['a', 'X', 'b', 'c'] // inserts X before b
         const theirs = ['a', 'b', 'Y', 'c'] // inserts Y before c
-        expect(magicMerge(base, ours, theirs)).toEqual(['a', 'X', 'b', 'Y', 'c'])
+        expect(magicMerge(base, ours, theirs)).toEqual([
+            'a',
+            'X',
+            'b',
+            'Y',
+            'c',
+        ])
     })
 
     it('merges deletion + unrelated edit', () => {
@@ -102,7 +126,12 @@ describe('magicMerge', () => {
     it('package-lock style: both sides add different dependencies', () => {
         // Common pattern the wand should catch.
         const base = ['"deps": {', '  "old": "1.0"', '}']
-        const ours = ['"deps": {', '  "old": "1.0",', '  "ours-pkg": "2.0"', '}']
+        const ours = [
+            '"deps": {',
+            '  "old": "1.0",',
+            '  "ours-pkg": "2.0"',
+            '}',
+        ]
         const theirs = [
             '"deps": {',
             '  "old": "1.0",',
