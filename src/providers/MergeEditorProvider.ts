@@ -131,22 +131,42 @@ export class MergeEditorProvider implements vscode.Disposable {
                     this.sendChunkUpdate(panel, uri)
                 } else if (msg.type === 'saveFile') {
                     try {
-                        const hasUnresolved = /^<{7}( |\t)/m.test(msg.content)
+                        const markerMatches =
+                            msg.content.match(/^<{7}( |\t)/gm) ?? []
+                        const hasUnresolved = markerMatches.length > 0
                         if (hasUnresolved) {
+                            const fileName =
+                                vscode.workspace.asRelativePath(uri)
+                            const n = markerMatches.length
                             const choice =
                                 await vscode.window.showWarningMessage(
-                                    'MergePro: File still contains unresolved conflict markers. Save anyway?',
-                                    'Save',
-                                    'Cancel'
+                                    `${fileName} still has ${n} unresolved conflict${n === 1 ? '' : 's'}.`,
+                                    {
+                                        modal: true,
+                                        detail: 'Saving now will write the conflict markers to disk and the file will NOT be staged. Resolve all conflicts before saving.',
+                                    },
+                                    'Save Anyway'
                                 )
-                            if (choice !== 'Save') return
+                            if (choice !== 'Save Anyway') return
                         }
                         const bytes = Buffer.from(msg.content, 'utf8')
                         await vscode.workspace.fs.writeFile(uri, bytes)
                         this.dirty.set(key, false)
                         if (!hasUnresolved) {
+                            // Stage the file so VS Code's Source Control panel
+                            // moves it out of "Merge Changes" — equivalent to
+                            // `git add <path>`. Only do this once the file is
+                            // marker-free; staging a half-resolved file would
+                            // be wrong.
+                            try {
+                                await this.git.stageFile(uri)
+                            } catch (stageErr) {
+                                vscode.window.showWarningMessage(
+                                    `MergePro: Saved, but failed to stage — ${String(stageErr)}`
+                                )
+                            }
                             vscode.window.showInformationMessage(
-                                `MergePro: Saved ${vscode.workspace.asRelativePath(uri)}`
+                                `MergePro: Resolved ${vscode.workspace.asRelativePath(uri)}`
                             )
                         }
                     } catch (err) {

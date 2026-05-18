@@ -14,6 +14,7 @@ interface GitAPI {
 interface Repository {
     rootUri: vscode.Uri
     state: RepositoryState
+    add(resources: vscode.Uri[]): Promise<void>
 }
 interface RepositoryState {
     mergeChanges: Change[]
@@ -140,6 +141,17 @@ export class GitService implements vscode.Disposable {
         return this.gitAPI.repositories.find((r) =>
             uri.fsPath.startsWith(r.rootUri.fsPath)
         )
+    }
+
+    /**
+     * Stage `uri` via the VS Code Git API. Equivalent to `git add <path>`,
+     * which clears the file's conflicted index entry so it leaves the Source
+     * Control panel's "Merge Changes" section.
+     */
+    async stageFile(uri: vscode.Uri): Promise<void> {
+        const repo = this.repoFor(uri) ?? this.gitAPI?.repositories[0]
+        if (!repo) return
+        await repo.add([uri])
     }
 
     async getFileContents(uri: vscode.Uri, stage: 1 | 2 | 3): Promise<string> {
