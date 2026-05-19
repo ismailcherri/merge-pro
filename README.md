@@ -75,7 +75,33 @@ code --install-extension merge-pro-0.1.0.vsix
 
 ## Configuration
 
-No user-facing settings yet. Future versions may expose color overrides and keybinding customization.
+### Customizing merge state colors
+
+MergePro contributes six color tokens you can override per-theme via `workbench.colorCustomizations` in `settings.json`:
+
+```jsonc
+"workbench.colorCustomizations": {
+    "mergePro.conflict.oursBackground": "#bc3f3c66",
+    "mergePro.conflict.theirsBackground": "#3c64bc66",
+    "mergePro.nonConflicting.oursBackground": "#62b26230",
+    "mergePro.nonConflicting.theirsBackground": "#c586c030",
+    "mergePro.result.unresolvedBackground": "#a0642e40",
+    "mergePro.resolved.background": "#4ec9b026"
+}
+```
+
+| Token | Applies to |
+| --- | --- |
+| `mergePro.conflict.oursBackground` | Conflict chunks in the **Ours** pane |
+| `mergePro.conflict.theirsBackground` | Conflict chunks in the **Theirs** pane |
+| `mergePro.nonConflicting.oursBackground` | Auto-mergeable chunks in the **Ours** pane |
+| `mergePro.nonConflicting.theirsBackground` | Auto-mergeable chunks in the **Theirs** pane |
+| `mergePro.result.unresolvedBackground` | Chunks awaiting a decision in the **Result** pane |
+| `mergePro.resolved.background` | Resolved chunks (any pane) |
+
+Use `#RRGGBBAA` to control transparency. Omit any token to keep its default.
+
+Keybinding customization will follow in a later release.
 
 ## Requirements
 
