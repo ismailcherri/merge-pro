@@ -3,7 +3,7 @@
     "displayName": "MergePro",
     "publisher": "ismailcherri",
     "description": "IntelliJ-style three-pane merge conflict resolver for VS Code.",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "license": "MIT",
     "icon": "assets/icon.png",
     "repository": {
