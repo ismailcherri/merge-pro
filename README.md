@@ -7,7 +7,17 @@
 [![Open VSX](https://img.shields.io/badge/Open%20VSX-MergePro-C160EF?logo=eclipseide&logoColor=white)](https://open-vsx.org/extension/ismailcherri/merge-pro)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-![Interface](./assets/diff_view.png)
+## Interface
+
+Open the **Source Control** panel in the activity bar to see all conflicted files grouped by MergePro. Click **Resolve** on any file to launch the three-pane merge editor.
+
+<p align="center">
+  <img src="./assets/side_bar.png" alt="MergePro entry point in the Source Control side bar" width="320" />
+</p>
+
+<p align="center">
+  <img src="./assets/diff_view.png" alt="MergePro three-pane merge editor" />
+</p>
 
 ## Features
 
