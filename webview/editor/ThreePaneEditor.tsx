@@ -358,9 +358,26 @@ export function ThreePaneEditor({
         const fullIdx = chunks.indexOf(chunk)
         const map = chunkMaps[fullIdx]
         if (!map) return
-        leftRef.current?.getEditor()?.revealLineInCenter(map.ours.start)
-        centerRef.current?.getEditor()?.revealLineInCenter(map.result.start)
-        rightRef.current?.getEditor()?.revealLineInCenter(map.theirs.start)
+
+        const oursLine = Math.max(1, map.ours.start)
+        const resultLine = Math.max(1, map.result.start)
+        const theirsLine = Math.max(1, map.theirs.start)
+        const resultEndLine = Math.max(resultLine, map.result.end)
+
+        leftRef.current?.getEditor()?.revealLineInCenter(oursLine)
+        rightRef.current?.getEditor()?.revealLineInCenter(theirsLine)
+
+        const centerEditor = centerRef.current?.getEditor()
+        if (centerEditor) {
+            centerEditor.setSelection({
+                startLineNumber: resultLine,
+                startColumn: 1,
+                endLineNumber: resultEndLine,
+                endColumn: 1,
+            })
+            centerEditor.revealLineInCenter(resultLine)
+            centerEditor.focus()
+        }
     }
 
     const handleDecision = (
