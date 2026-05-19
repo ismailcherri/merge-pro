@@ -8,6 +8,7 @@ interface Props {
     canRedo: boolean
     onPrev: () => void
     onNext: () => void
+    onJumpToCurrent: () => void
     onAutoResolve: () => void
     onMagicResolve: () => void
     onUndo: () => void
@@ -33,6 +34,7 @@ export function Toolbar({
     canRedo,
     onPrev,
     onNext,
+    onJumpToCurrent,
     onAutoResolve,
     onMagicResolve,
     onUndo,
@@ -71,21 +73,32 @@ export function Toolbar({
             <button style={btn} onClick={onPrev}>
                 ▲ Prev
             </button>
-            <span
-                style={{
-                    fontSize: 11,
-                    color:
-                        totalConflicts > 0
-                            ? 'var(--vscode-problemsWarningIcon-foreground)'
-                            : undefined,
-                    minWidth: 70,
-                    textAlign: 'center',
-                }}
-            >
-                {totalConflicts === 0
-                    ? 'No conflicts'
-                    : `Conflict ${currentConflict} / ${totalConflicts}`}
-            </span>
+            {totalConflicts === 0 ? (
+                <span
+                    style={{
+                        fontSize: 11,
+                        minWidth: 70,
+                        textAlign: 'center',
+                    }}
+                >
+                    No conflicts
+                </span>
+            ) : (
+                <button
+                    onClick={onJumpToCurrent}
+                    title="Jump to current conflict"
+                    style={{
+                        ...btn,
+                        background: 'transparent',
+                        border: '1px solid transparent',
+                        color: 'var(--vscode-problemsWarningIcon-foreground)',
+                        minWidth: 70,
+                        textAlign: 'center',
+                    }}
+                >
+                    Conflict {currentConflict} / {totalConflicts}
+                </button>
+            )}
             <button style={btn} onClick={onNext}>
                 Next ▼
             </button>

@@ -346,14 +346,8 @@ export function ThreePaneEditor({
         setEditorsMounted((n) => n + 1)
     }, [])
 
-    const navigateConflict = (direction: 1 | -1) => {
-        if (totalConflicts === 0) return
-        const next = Math.max(
-            0,
-            Math.min(totalConflicts - 1, currentConflictIdx + direction)
-        )
-        setCurrentConflictIdx(next)
-        const chunk = conflictChunks[next]
+    const jumpToConflict = (idx: number) => {
+        const chunk = conflictChunks[idx]
         if (!chunk) return
         const fullIdx = chunks.indexOf(chunk)
         const map = chunkMaps[fullIdx]
@@ -378,6 +372,21 @@ export function ThreePaneEditor({
             centerEditor.revealLineInCenter(resultLine)
             centerEditor.focus()
         }
+    }
+
+    const navigateConflict = (direction: 1 | -1) => {
+        if (totalConflicts === 0) return
+        const next = Math.max(
+            0,
+            Math.min(totalConflicts - 1, currentConflictIdx + direction)
+        )
+        setCurrentConflictIdx(next)
+        jumpToConflict(next)
+    }
+
+    const jumpToCurrentConflict = () => {
+        if (totalConflicts === 0) return
+        jumpToConflict(currentConflictIdx)
     }
 
     const handleDecision = (
@@ -424,6 +433,7 @@ export function ThreePaneEditor({
                 canRedo={canRedo}
                 onPrev={() => navigateConflict(-1)}
                 onNext={() => navigateConflict(1)}
+                onJumpToCurrent={jumpToCurrentConflict}
                 onAutoResolve={onAutoResolve}
                 onMagicResolve={onMagicResolve}
                 onUndo={onUndo}
