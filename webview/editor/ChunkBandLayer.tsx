@@ -2,14 +2,9 @@ import * as monaco from 'monaco-editor'
 import { useEffect, useMemo, useRef } from 'react'
 import { isChunkResolved, type ConflictChunk } from '../../src/protocol'
 import type { ChunkLineMap } from './buildDisplayDocuments'
+import { CHUNK_FILL } from './chunkColors'
 import type { Pane } from './lineMapping'
 
-// Mirror DecisionButtons / GutterConnector palette so the band visually
-// continues edge-to-edge across every intermediate column.
-const FILL_CONFLICT = 'rgba(188,63,60,0.22)'
-const FILL_NONCONFLICT = 'rgba(98,178,98,0.18)'
-const FILL_RESOLVED = 'rgba(78,201,176,0.18)'
-const FILL_PARTIAL = 'rgba(188,63,60,0.12)'
 const MIN_TIP_HEIGHT = 2
 
 interface Props {
@@ -52,10 +47,10 @@ export function ChunkBandLayer({
                     c.oursDecision !== undefined ||
                     c.theirsDecision !== undefined
                 let fill: string
-                if (resolved) fill = FILL_RESOLVED
-                else if (anyDecision) fill = FILL_PARTIAL
-                else if (c.type === 'conflict') fill = FILL_CONFLICT
-                else fill = FILL_NONCONFLICT
+                if (resolved) fill = CHUNK_FILL.resolved
+                else if (anyDecision) fill = CHUNK_FILL.partial
+                else if (c.type === 'conflict') fill = CHUNK_FILL.conflict
+                else fill = CHUNK_FILL.nonConflicting
                 return { chunkIndex: i, fill }
             }),
         [chunks]
@@ -136,8 +131,7 @@ export function ChunkBandLayer({
                     y={0}
                     width={width}
                     height={0}
-                    fill={v.fill}
-                    style={{ display: 'none' }}
+                    style={{ display: 'none', fill: v.fill }}
                 />
             ))}
         </svg>
