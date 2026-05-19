@@ -2,6 +2,7 @@ import * as monaco from 'monaco-editor'
 import { useEffect, useMemo, useRef } from 'react'
 import { isChunkResolved, type ConflictChunk } from '../../src/protocol'
 import type { ChunkLineMap } from './buildDisplayDocuments'
+import { CHUNK_FILL } from './chunkColors'
 import type { Pane } from './lineMapping'
 
 interface Props {
@@ -14,11 +15,6 @@ interface Props {
     width: number
     height: number
 }
-
-const FILL_CONFLICT = 'rgba(188,63,60,0.22)'
-const FILL_NONCONFLICT = 'rgba(98,178,98,0.18)'
-const FILL_RESOLVED = 'rgba(78,201,176,0.18)'
-const FILL_PARTIAL = 'rgba(188,63,60,0.12)'
 
 // When a chunk has zero lines on one side (pure insertion/deletion), the
 // connector would collapse to a single point on that side. Splay it out
@@ -175,12 +171,12 @@ export function GutterConnector({
         >
             {visuals.map((v) => {
                 const fill = v.isResolved
-                    ? FILL_RESOLVED
+                    ? CHUNK_FILL.resolved
                     : v.isPartial
-                      ? FILL_PARTIAL
+                      ? CHUNK_FILL.partial
                       : v.isConflict
-                        ? FILL_CONFLICT
-                        : FILL_NONCONFLICT
+                        ? CHUNK_FILL.conflict
+                        : CHUNK_FILL.nonConflicting
                 return (
                     <path
                         key={`chunk-${v.chunkIndex}`}
@@ -188,8 +184,7 @@ export function GutterConnector({
                             pathRefs.current[v.chunkIndex] = el
                         }}
                         d=""
-                        fill={fill}
-                        style={{ display: 'none' }}
+                        style={{ display: 'none', fill }}
                     />
                 )
             })}
