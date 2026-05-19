@@ -61,14 +61,14 @@ if (typeof document !== 'undefined') {
         const style = document.createElement('style')
         style.id = styleId
         style.textContent = `
-    .merge-ours-conflict         { background: rgba(188,63,60,0.28); border-left: 2px solid rgba(220,80,70,0.6); }
-    .merge-ours-nonconflicting   { background: rgba(98,178,98,0.15); }
-    .merge-ours-resolved         { background: rgba(78,201,176,0.12); }
-    .merge-theirs-conflict       { background: rgba(60,100,188,0.28); border-right: 2px solid rgba(70,120,220,0.6); }
-    .merge-theirs-nonconflicting { background: rgba(197,134,192,0.15); }
-    .merge-theirs-resolved       { background: rgba(78,201,176,0.12); }
-    .merge-result-unresolved     { background: rgba(160,100,40,0.18); }
-    .merge-result-resolved       { background: rgba(78,201,176,0.12); }
+    .merge-ours-conflict         { background: var(--vscode-mergePro-conflict-oursBackground, rgba(188,63,60,0.28)); border-left: 2px solid rgba(220,80,70,0.6); }
+    .merge-ours-nonconflicting   { background: var(--vscode-mergePro-nonConflicting-oursBackground, rgba(98,178,98,0.15)); }
+    .merge-ours-resolved         { background: var(--vscode-mergePro-resolved-background, rgba(78,201,176,0.12)); }
+    .merge-theirs-conflict       { background: var(--vscode-mergePro-conflict-theirsBackground, rgba(60,100,188,0.28)); border-right: 2px solid rgba(70,120,220,0.6); }
+    .merge-theirs-nonconflicting { background: var(--vscode-mergePro-nonConflicting-theirsBackground, rgba(197,134,192,0.15)); }
+    .merge-theirs-resolved       { background: var(--vscode-mergePro-resolved-background, rgba(78,201,176,0.12)); }
+    .merge-result-unresolved     { background: var(--vscode-mergePro-result-unresolvedBackground, rgba(160,100,40,0.18)); }
+    .merge-result-resolved       { background: var(--vscode-mergePro-resolved-background, rgba(78,201,176,0.12)); }
     /* Thin marker showing where the *other* side inserted lines that don't
        exist here. Color matches the gutter connector for that chunk type. */
     .merge-empty-conflict-top    { border-top: 2px solid rgba(220,80,70,0.7); }
