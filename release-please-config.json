@@ -3,9 +3,9 @@
     "release-type": "node",
     "packages": {
         ".": {
-            "package-name": "merge-pro",
             "changelog-path": "CHANGELOG.md",
             "include-v-in-tag": true,
+            "include-component-in-tag": false,
             "draft": false,
             "prerelease": false,
             "bump-minor-pre-major": true,
