@@ -76,6 +76,62 @@
                 "key": "alt+down",
                 "when": "mergePro.editorActive"
             }
+        ],
+        "colors": [
+            {
+                "id": "mergePro.conflict.oursBackground",
+                "description": "Background highlight for unresolved conflict chunks on the Ours pane.",
+                "defaults": {
+                    "dark": "#bc3f3c47",
+                    "light": "#bc3f3c47",
+                    "highContrast": "#bc3f3c47"
+                }
+            },
+            {
+                "id": "mergePro.conflict.theirsBackground",
+                "description": "Background highlight for unresolved conflict chunks on the Theirs pane.",
+                "defaults": {
+                    "dark": "#3c64bc47",
+                    "light": "#3c64bc47",
+                    "highContrast": "#3c64bc47"
+                }
+            },
+            {
+                "id": "mergePro.nonConflicting.oursBackground",
+                "description": "Background highlight for non-conflicting auto-merged chunks on the Ours pane.",
+                "defaults": {
+                    "dark": "#62b26226",
+                    "light": "#62b26226",
+                    "highContrast": "#62b26226"
+                }
+            },
+            {
+                "id": "mergePro.nonConflicting.theirsBackground",
+                "description": "Background highlight for non-conflicting auto-merged chunks on the Theirs pane.",
+                "defaults": {
+                    "dark": "#c586c026",
+                    "light": "#c586c026",
+                    "highContrast": "#c586c026"
+                }
+            },
+            {
+                "id": "mergePro.result.unresolvedBackground",
+                "description": "Background highlight for chunks awaiting a decision in the Result pane.",
+                "defaults": {
+                    "dark": "#a0642e2e",
+                    "light": "#a0642e2e",
+                    "highContrast": "#a0642e2e"
+                }
+            },
+            {
+                "id": "mergePro.resolved.background",
+                "description": "Background highlight for resolved chunks in any pane.",
+                "defaults": {
+                    "dark": "#4ec9b01f",
+                    "light": "#4ec9b01f",
+                    "highContrast": "#4ec9b01f"
+                }
+            }
         ]
     },
     "scripts": {
