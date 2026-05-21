@@ -6,14 +6,21 @@ export default defineConfig({
     test: {
         environment: 'jsdom',
         globals: true,
-        include: ['test/unit/webview/**/*.test.tsx'],
+        include: ['test/unit/webview/**/*.test.{ts,tsx}'],
         setupFiles: ['test/unit/webview/setup.ts'],
         coverage: {
             provider: 'v8',
             reporter: ['text', 'lcov'],
             reportsDirectory: 'coverage/webview',
             include: ['webview/**/*.{ts,tsx}'],
-            exclude: ['webview/**/*.d.ts', 'test/**'],
+            exclude: [
+                'webview/**/*.d.ts',
+                'webview/editor/index.tsx',
+                'webview/editor/setupMonacoWorkers.ts',
+                'webview/panel/index.tsx',
+                'webview/panel/vscode.ts',
+                'test/**',
+            ],
         },
         reporters: ['default', 'vitest-sonar-reporter'],
         outputFile: {

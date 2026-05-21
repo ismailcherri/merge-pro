@@ -51,7 +51,12 @@ function unmergeableChunk(): ConflictChunk {
 
 describe('MagicWandColumn', () => {
     it('renders a wand only for conflicts magicMerge can resolve', () => {
-        const chunks = [mergeableChunk(), unmergeableChunk(), mergeableChunk()]
+        const second = {
+            ...mergeableChunk(),
+            baseStartLine: 10,
+            baseEndLine: 12,
+        }
+        const chunks = [mergeableChunk(), unmergeableChunk(), second]
         const chunkMaps = [trivialMap, trivialMap, trivialMap]
         const { container } = render(
             <MagicWandColumn

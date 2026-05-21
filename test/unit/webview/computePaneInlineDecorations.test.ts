@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computePaneInlineDecorations } from '../../webview/editor/computePaneInlineDecorations'
+import { computePaneInlineDecorations } from '../../../webview/editor/computePaneInlineDecorations'
 
 describe('computePaneInlineDecorations', () => {
     it('returns empty arrays when there are no chunks', () => {

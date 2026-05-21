@@ -116,9 +116,12 @@ export function MagicWandColumn({
             >
                 {chunks.map((c, i) => {
                     if (!mergeable.has(i)) return null
+                    // Chunks in a parse don't reorder; the base range + side
+                    // lengths uniquely identify each one for React's key.
+                    const k = `wand-${c.baseStartLine}-${c.baseEndLine}-${c.oursLines.length}-${c.theirsLines.length}`
                     return (
                         <g
-                            key={`wand-${c.baseStartLine}-${c.baseEndLine}`}
+                            key={k}
                             ref={(el) => {
                                 groupRefs.current[i] = el
                             }}

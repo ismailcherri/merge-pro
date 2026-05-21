@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeInlineDiff } from '../../webview/editor/inlineDiff'
+import { computeInlineDiff } from '../../../webview/editor/inlineDiff'
 
 describe('computeInlineDiff', () => {
     it('returns empty spans when inputs are identical', () => {
