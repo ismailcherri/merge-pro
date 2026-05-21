@@ -92,6 +92,92 @@ function reconstructSide(
     return out
 }
 
+interface ClusterCursors {
+    oi: number
+    ti: number
+}
+
+interface Cluster {
+    baseStart: number
+    baseEnd: number
+    clusterOurs: Hunk[]
+    clusterTheirs: Hunk[]
+}
+
+function buildNextCluster(
+    oursHunks: Hunk[],
+    theirsHunks: Hunk[],
+    cursors: ClusterCursors
+): Cluster {
+    const o = oursHunks[cursors.oi]
+    const t = theirsHunks[cursors.ti]
+    const clusterOurs: Hunk[] = []
+    const clusterTheirs: Hunk[] = []
+    let baseStart: number
+    let baseEnd: number
+
+    if (!t || (o && o.baseStart <= t.baseStart)) {
+        clusterOurs.push(o)
+        baseStart = o.baseStart
+        baseEnd = o.baseEnd
+        cursors.oi++
+    } else {
+        clusterTheirs.push(t)
+        baseStart = t.baseStart
+        baseEnd = t.baseEnd
+        cursors.ti++
+    }
+
+    for (;;) {
+        let extended = false
+        while (
+            cursors.oi < oursHunks.length &&
+            overlapsRange(oursHunks[cursors.oi], baseStart, baseEnd)
+        ) {
+            const h = oursHunks[cursors.oi++]
+            clusterOurs.push(h)
+            baseEnd = Math.max(baseEnd, h.baseEnd)
+            extended = true
+        }
+        while (
+            cursors.ti < theirsHunks.length &&
+            overlapsRange(theirsHunks[cursors.ti], baseStart, baseEnd)
+        ) {
+            const h = theirsHunks[cursors.ti++]
+            clusterTheirs.push(h)
+            baseEnd = Math.max(baseEnd, h.baseEnd)
+            extended = true
+        }
+        if (!extended) break
+    }
+
+    return { baseStart, baseEnd, clusterOurs, clusterTheirs }
+}
+
+function classifyCluster(
+    oursLines: string[],
+    theirsLines: string[],
+    chunkBaseLines: string[],
+    baseStart: number,
+    baseEnd: number
+): ConflictChunk {
+    const oursChanged = !arraysEqual(oursLines, chunkBaseLines)
+    const theirsChanged = !arraysEqual(theirsLines, chunkBaseLines)
+    const common = {
+        oursLines,
+        baseLines: chunkBaseLines,
+        theirsLines,
+        baseStartLine: baseStart,
+        baseEndLine: baseEnd,
+    }
+    if (oursChanged && theirsChanged && !arraysEqual(oursLines, theirsLines)) {
+        return { type: 'conflict', ...common }
+    }
+    const winner: 'ours' | 'theirs' =
+        theirsChanged && !oursChanged ? 'theirs' : 'ours'
+    return { type: 'non-conflicting', ...common, winner }
+}
+
 export function parse(
     oursText: string,
     baseText: string,
@@ -108,110 +194,34 @@ export function parse(
     // each cluster by repeatedly absorbing hunks whose base range touches
     // the cluster's accumulated range, from either side, until no more do.
     const chunks: ConflictChunk[] = []
-    let oi = 0
-    let ti = 0
-    while (oi < oursHunks.length || ti < theirsHunks.length) {
-        const o = oursHunks[oi]
-        const t = theirsHunks[ti]
-        let baseStart: number
-        let baseEnd: number
-        const clusterOurs: Hunk[] = []
-        const clusterTheirs: Hunk[] = []
-
-        if (!t || (o && o.baseStart <= t.baseStart)) {
-            clusterOurs.push(o)
-            baseStart = o.baseStart
-            baseEnd = o.baseEnd
-            oi++
-        } else {
-            clusterTheirs.push(t)
-            baseStart = t.baseStart
-            baseEnd = t.baseEnd
-            ti++
-        }
-
-        for (;;) {
-            let extended = false
-            while (
-                oi < oursHunks.length &&
-                overlapsRange(oursHunks[oi], baseStart, baseEnd)
-            ) {
-                const h = oursHunks[oi++]
-                clusterOurs.push(h)
-                baseEnd = Math.max(baseEnd, h.baseEnd)
-                extended = true
-            }
-            while (
-                ti < theirsHunks.length &&
-                overlapsRange(theirsHunks[ti], baseStart, baseEnd)
-            ) {
-                const h = theirsHunks[ti++]
-                clusterTheirs.push(h)
-                baseEnd = Math.max(baseEnd, h.baseEnd)
-                extended = true
-            }
-            if (!extended) break
-        }
-
+    const cursors: ClusterCursors = { oi: 0, ti: 0 }
+    while (cursors.oi < oursHunks.length || cursors.ti < theirsHunks.length) {
+        const cluster = buildNextCluster(oursHunks, theirsHunks, cursors)
         const oursLines = reconstructSide(
-            clusterOurs,
-            baseStart,
-            baseEnd,
+            cluster.clusterOurs,
+            cluster.baseStart,
+            cluster.baseEnd,
             baseLines
         )
         const theirsLines = reconstructSide(
-            clusterTheirs,
-            baseStart,
-            baseEnd,
+            cluster.clusterTheirs,
+            cluster.baseStart,
+            cluster.baseEnd,
             baseLines
         )
-        const chunkBaseLines = baseLines.slice(baseStart, baseEnd)
-
-        const oursChanged = !arraysEqual(oursLines, chunkBaseLines)
-        const theirsChanged = !arraysEqual(theirsLines, chunkBaseLines)
-
-        if (oursChanged && theirsChanged) {
-            if (arraysEqual(oursLines, theirsLines)) {
-                chunks.push({
-                    type: 'non-conflicting',
-                    oursLines,
-                    baseLines: chunkBaseLines,
-                    theirsLines,
-                    baseStartLine: baseStart,
-                    baseEndLine: baseEnd,
-                    winner: 'ours',
-                })
-            } else {
-                chunks.push({
-                    type: 'conflict',
-                    oursLines,
-                    baseLines: chunkBaseLines,
-                    theirsLines,
-                    baseStartLine: baseStart,
-                    baseEndLine: baseEnd,
-                })
-            }
-        } else if (oursChanged) {
-            chunks.push({
-                type: 'non-conflicting',
+        const chunkBaseLines = baseLines.slice(
+            cluster.baseStart,
+            cluster.baseEnd
+        )
+        chunks.push(
+            classifyCluster(
                 oursLines,
-                baseLines: chunkBaseLines,
                 theirsLines,
-                baseStartLine: baseStart,
-                baseEndLine: baseEnd,
-                winner: 'ours',
-            })
-        } else {
-            chunks.push({
-                type: 'non-conflicting',
-                oursLines,
-                baseLines: chunkBaseLines,
-                theirsLines,
-                baseStartLine: baseStart,
-                baseEndLine: baseEnd,
-                winner: 'theirs',
-            })
-        }
+                chunkBaseLines,
+                cluster.baseStart,
+                cluster.baseEnd
+            )
+        )
     }
 
     return coalesceChunks(chunks, baseLines)

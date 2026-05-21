@@ -40,7 +40,7 @@ export function Toolbar({
     onUndo,
     onRedo,
     onSave,
-}: Props) {
+}: Readonly<Props>) {
     const disabledBtn = (disabled: boolean): CSSProperties => ({
         ...btn,
         opacity: disabled ? 0.4 : 1,

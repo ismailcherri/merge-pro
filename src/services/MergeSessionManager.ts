@@ -21,20 +21,18 @@ export class MergeSessionManager implements vscode.Disposable {
         new vscode.EventEmitter<SessionState>()
     readonly onDidSessionUpdate = this._onDidSessionUpdate.event
 
-    private fileStates = new Map<
+    private readonly fileStates = new Map<
         string,
         FileConflictState & { chunks: ConflictChunk[] }
     >()
-    private undoStacks = new Map<string, DecisionSnapshot[]>()
-    private redoStacks = new Map<string, DecisionSnapshot[]>()
+    private readonly undoStacks = new Map<string, DecisionSnapshot[]>()
+    private readonly redoStacks = new Map<string, DecisionSnapshot[]>()
     private readonly disposables: vscode.Disposable[] = []
 
     constructor(private readonly git: GitService) {
-        this.disposables.push(this._onDidSessionUpdate)
         this.disposables.push(
-            git.onDidMergeStateChange(() => this.refreshAll())
-        )
-        this.disposables.push(
+            this._onDidSessionUpdate,
+            git.onDidMergeStateChange(() => this.refreshAll()),
             vscode.workspace.onDidChangeTextDocument((e) => {
                 const key = e.document.uri.toString()
                 if (this.fileStates.has(key)) {

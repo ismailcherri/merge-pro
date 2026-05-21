@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import type { WebviewFileState } from '../../src/protocol'
 
 interface Props {
@@ -7,7 +7,31 @@ interface Props {
     isActive: boolean
 }
 
-export function FileItem({ file, onResolve, isActive }: Props) {
+function rowBackground(isActive: boolean, hover: boolean): string | undefined {
+    if (isActive) {
+        return 'var(--vscode-list-activeSelectionBackground, rgba(0,122,204,0.18))'
+    }
+    if (hover) {
+        return 'var(--vscode-list-hoverBackground, rgba(255,255,255,0.04))'
+    }
+    return undefined
+}
+
+function resolveButtonBackground(isActive: boolean, btnHover: boolean): string {
+    if (isActive) {
+        return 'var(--vscode-button-secondaryBackground, rgba(255,255,255,0.08))'
+    }
+    if (btnHover) return 'var(--vscode-button-hoverBackground)'
+    return 'var(--vscode-button-background)'
+}
+
+function resolveButtonColor(isActive: boolean): string {
+    return isActive
+        ? 'var(--vscode-button-secondaryForeground, var(--vscode-foreground))'
+        : 'var(--vscode-button-foreground)'
+}
+
+export function FileItem({ file, onResolve, isActive }: Readonly<Props>) {
     const isResolved =
         file.resolvedChunks >= file.totalChunks && file.totalChunks > 0
     const pct =
@@ -18,33 +42,24 @@ export function FileItem({ file, onResolve, isActive }: Props) {
     const [hover, setHover] = useState(false)
     const [btnHover, setBtnHover] = useState(false)
 
-    const open = () => {
-        if (isActive) return
-        onResolve(file.uri)
+    const rowStyle: CSSProperties = {
+        padding: '6px 12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        borderLeft: isActive
+            ? '2px solid var(--vscode-focusBorder)'
+            : '2px solid transparent',
+        background: rowBackground(isActive, hover),
+        opacity: isResolved ? 0.85 : 1,
+        position: 'relative',
     }
 
     return (
         <div
-            onClick={open}
             onMouseEnter={() => setHover(true)}
             onMouseLeave={() => setHover(false)}
-            style={{
-                padding: '6px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                cursor: isActive ? 'default' : 'pointer',
-                borderLeft: isActive
-                    ? '2px solid var(--vscode-focusBorder)'
-                    : '2px solid transparent',
-                background: isActive
-                    ? 'var(--vscode-list-activeSelectionBackground, rgba(0,122,204,0.18))'
-                    : hover
-                      ? 'var(--vscode-list-hoverBackground, rgba(255,255,255,0.04))'
-                      : undefined,
-                opacity: isResolved ? 0.85 : 1,
-                position: 'relative',
-            }}
+            style={rowStyle}
         >
             <span
                 style={{
@@ -92,8 +107,7 @@ export function FileItem({ file, onResolve, isActive }: Props) {
             )}
             {!isResolved && (
                 <button
-                    onClick={(e) => {
-                        e.stopPropagation()
+                    onClick={() => {
                         if (!isActive) onResolve(file.uri)
                     }}
                     onMouseEnter={() => setBtnHover(true)}
@@ -104,14 +118,8 @@ export function FileItem({ file, onResolve, isActive }: Props) {
                         fontWeight: 500,
                         padding: '3px 10px',
                         cursor: isActive ? 'default' : 'pointer',
-                        background: isActive
-                            ? 'var(--vscode-button-secondaryBackground, rgba(255,255,255,0.08))'
-                            : btnHover
-                              ? 'var(--vscode-button-hoverBackground)'
-                              : 'var(--vscode-button-background)',
-                        color: isActive
-                            ? 'var(--vscode-button-secondaryForeground, var(--vscode-foreground))'
-                            : 'var(--vscode-button-foreground)',
+                        background: resolveButtonBackground(isActive, btnHover),
+                        color: resolveButtonColor(isActive),
                         border: '1px solid transparent',
                         borderRadius: 3,
                         opacity: isActive ? 0.7 : 1,
@@ -122,10 +130,7 @@ export function FileItem({ file, onResolve, isActive }: Props) {
             )}
             {isResolved && (
                 <button
-                    onClick={(e) => {
-                        e.stopPropagation()
-                        onResolve(file.uri)
-                    }}
+                    onClick={() => onResolve(file.uri)}
                     onMouseEnter={() => setBtnHover(true)}
                     onMouseLeave={() => setBtnHover(false)}
                     style={{

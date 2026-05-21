@@ -29,6 +29,13 @@ interface ChunkVisual {
     isPartial: boolean
 }
 
+function fillForVisual(v: ChunkVisual): string {
+    if (v.isResolved) return CHUNK_FILL.resolved
+    if (v.isPartial) return CHUNK_FILL.partial
+    if (v.isConflict) return CHUNK_FILL.conflict
+    return CHUNK_FILL.nonConflicting
+}
+
 export function GutterConnector({
     chunks,
     chunkMaps,
@@ -38,7 +45,7 @@ export function GutterConnector({
     rightPane,
     width,
     height,
-}: Props) {
+}: Readonly<Props>) {
     const pathRefs = useRef<(SVGPathElement | null)[]>([])
     const rafRef = useRef<number | null>(null)
 
@@ -170,13 +177,7 @@ export function GutterConnector({
             style={{ display: 'block', width: '100%', height: '100%' }}
         >
             {visuals.map((v) => {
-                const fill = v.isResolved
-                    ? CHUNK_FILL.resolved
-                    : v.isPartial
-                      ? CHUNK_FILL.partial
-                      : v.isConflict
-                        ? CHUNK_FILL.conflict
-                        : CHUNK_FILL.nonConflicting
+                const fill = fillForVisual(v)
                 return (
                     <path
                         key={`chunk-${v.chunkIndex}`}

@@ -47,6 +47,49 @@ interface ChunkVisual {
     isPartial: boolean
 }
 
+function fillForVisual(v: ChunkVisual): string {
+    if (v.isResolved) return FILL_RESOLVED
+    if (v.isPartial) return FILL_PARTIAL
+    if (v.isConflict) return FILL_CONFLICT
+    return FILL_NONCONFLICT
+}
+
+function updateBand(
+    band: SVGRectElement,
+    onScreen: boolean,
+    top: number,
+    bot: number
+): void {
+    if (onScreen) {
+        band.style.display = ''
+        band.setAttribute('y', String(top))
+        band.setAttribute('height', String(Math.max(0, bot - top)))
+    } else {
+        band.style.display = 'none'
+    }
+}
+
+function updateButtons(
+    grp: SVGGElement,
+    onScreen: boolean,
+    top: number,
+    bot: number,
+    width: number
+): void {
+    if (!onScreen) {
+        grp.style.display = 'none'
+        return
+    }
+    grp.style.display = ''
+    const groupW = BTN_W * 2 + BTN_GAP
+    const btnX = (width - groupW) / 2
+    // Pin to the top of the chunk so multi-line chunks anchor the controls
+    // where the change starts. Clamp so the buttons don't fall off the bottom
+    // for very short ranges (e.g. zero-line insertions).
+    const btnY = Math.min(top + BTN_TOP_PAD, Math.max(top, bot - BTN_H))
+    grp.setAttribute('transform', `translate(${btnX}, ${btnY})`)
+}
+
 export function DecisionButtons({
     chunks,
     chunkMaps,
@@ -56,7 +99,7 @@ export function DecisionButtons({
     width,
     height,
     onDecision,
-}: Props) {
+}: Readonly<Props>) {
     const groupRefs = useRef<(SVGGElement | null)[]>([])
     const bandRefs = useRef<(SVGRectElement | null)[]>([])
     const rafRef = useRef<number | null>(null)
@@ -103,39 +146,8 @@ export function DecisionButtons({
                 }
 
                 const onScreen = bot >= 0 && top <= height
-                if (band) {
-                    if (!onScreen) {
-                        band.style.display = 'none'
-                    } else {
-                        band.style.display = ''
-                        band.setAttribute('y', String(top))
-                        band.setAttribute(
-                            'height',
-                            String(Math.max(0, bot - top))
-                        )
-                    }
-                }
-                if (grp) {
-                    if (!onScreen) {
-                        grp.style.display = 'none'
-                    } else {
-                        grp.style.display = ''
-                        const groupW = BTN_W * 2 + BTN_GAP
-                        const btnX = (width - groupW) / 2
-                        // Pin to the top of the chunk so multi-line chunks
-                        // anchor the controls where the change starts. Clamp
-                        // so the buttons don't fall off the bottom for very
-                        // short ranges (e.g. zero-line insertions).
-                        const btnY = Math.min(
-                            top + BTN_TOP_PAD,
-                            Math.max(top, bot - BTN_H)
-                        )
-                        grp.setAttribute(
-                            'transform',
-                            `translate(${btnX}, ${btnY})`
-                        )
-                    }
-                }
+                if (band) updateBand(band, onScreen, top, bot)
+                if (grp) updateButtons(grp, onScreen, top, bot, width)
             }
         }
 
@@ -169,13 +181,7 @@ export function DecisionButtons({
             style={{ display: 'block', width: '100%', height: '100%' }}
         >
             {visuals.map((v) => {
-                const fill = v.isResolved
-                    ? FILL_RESOLVED
-                    : v.isPartial
-                      ? FILL_PARTIAL
-                      : v.isConflict
-                        ? FILL_CONFLICT
-                        : FILL_NONCONFLICT
+                const fill = fillForVisual(v)
                 const chunk = chunks[v.chunkIndex]
                 const sideDecision =
                     side === 'ours' ? chunk.oursDecision : chunk.theirsDecision

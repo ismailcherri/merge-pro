@@ -1,13 +1,13 @@
-import { randomBytes } from 'crypto'
-import { readdirSync } from 'fs'
+import { randomBytes } from 'node:crypto'
+import { readdirSync } from 'node:fs'
 import * as vscode from 'vscode'
 import type { EditorToHost, HostToEditor } from '../protocol'
 import type { GitService } from '../services/GitService'
 import type { MergeSessionManager } from '../services/MergeSessionManager'
 
 export class MergeEditorProvider implements vscode.Disposable {
-    private panels = new Map<string, vscode.WebviewPanel>()
-    private dirty = new Map<string, boolean>()
+    private readonly panels = new Map<string, vscode.WebviewPanel>()
+    private readonly dirty = new Map<string, boolean>()
     private activeUri: string | undefined
     private readonly _onDidChangeActiveEditor = new vscode.EventEmitter<
         string | undefined
@@ -87,97 +87,125 @@ export class MergeEditorProvider implements vscode.Disposable {
 
         // Wait for webview to signal ready, then send init data
         panel.webview.onDidReceiveMessage(
-            async (msg: EditorToHost) => {
-                if (msg.type === 'ready') {
-                    try {
-                        await this.sendInit(panel, uri)
-                    } catch (err) {
-                        vscode.window.showErrorMessage(
-                            `MergePro: Failed to load merge data — ${String(err)}`
-                        )
-                    }
-                } else if (msg.type === 'chunkDecision') {
-                    this.session.setChunkDecision(
-                        uri,
-                        msg.chunkIndex,
-                        msg.side,
-                        msg.decision
-                    )
-                    this.dirty.set(key, true)
-                    this.sendChunkUpdate(panel, uri)
-                } else if (msg.type === 'chunkResolvedManual') {
-                    this.session.setChunkManual(uri, msg.chunkIndex, msg.lines)
-                    this.dirty.set(key, true)
-                    this.sendChunkUpdate(panel, uri)
-                } else if (msg.type === 'autoResolve') {
-                    this.session.autoResolveNonConflicting(uri)
-                    this.dirty.set(key, true)
-                    this.sendChunkUpdate(panel, uri)
-                } else if (msg.type === 'magicResolve') {
-                    this.session.magicResolve(uri)
-                    this.dirty.set(key, true)
-                    this.sendChunkUpdate(panel, uri)
-                } else if (msg.type === 'magicResolveChunk') {
-                    this.session.magicResolveChunk(uri, msg.chunkIndex)
-                    this.dirty.set(key, true)
-                    this.sendChunkUpdate(panel, uri)
-                } else if (msg.type === 'undo') {
-                    this.session.undo(uri)
-                    this.dirty.set(key, true)
-                    this.sendChunkUpdate(panel, uri)
-                } else if (msg.type === 'redo') {
-                    this.session.redo(uri)
-                    this.dirty.set(key, true)
-                    this.sendChunkUpdate(panel, uri)
-                } else if (msg.type === 'saveFile') {
-                    try {
-                        const markerMatches =
-                            msg.content.match(/^<{7}( |\t)/gm) ?? []
-                        const hasUnresolved = markerMatches.length > 0
-                        if (hasUnresolved) {
-                            const fileName =
-                                vscode.workspace.asRelativePath(uri)
-                            const n = markerMatches.length
-                            const choice =
-                                await vscode.window.showWarningMessage(
-                                    `${fileName} still has ${n} unresolved conflict${n === 1 ? '' : 's'}.`,
-                                    {
-                                        modal: true,
-                                        detail: 'Saving now will write the conflict markers to disk and the file will NOT be staged. Resolve all conflicts before saving.',
-                                    },
-                                    'Save Anyway'
-                                )
-                            if (choice !== 'Save Anyway') return
-                        }
-                        const bytes = Buffer.from(msg.content, 'utf8')
-                        await vscode.workspace.fs.writeFile(uri, bytes)
-                        this.dirty.set(key, false)
-                        if (!hasUnresolved) {
-                            // Stage the file so VS Code's Source Control panel
-                            // moves it out of "Merge Changes" — equivalent to
-                            // `git add <path>`. Only do this once the file is
-                            // marker-free; staging a half-resolved file would
-                            // be wrong.
-                            try {
-                                await this.git.stageFile(uri)
-                            } catch (stageErr) {
-                                vscode.window.showWarningMessage(
-                                    `MergePro: Saved, but failed to stage — ${String(stageErr)}`
-                                )
-                            }
-                            vscode.window.showInformationMessage(
-                                `MergePro: Resolved ${vscode.workspace.asRelativePath(uri)}`
-                            )
-                        }
-                    } catch (err) {
-                        vscode.window.showErrorMessage(
-                            `MergePro: Failed to save — ${String(err)}`
-                        )
-                    }
-                }
-            },
+            (msg: EditorToHost) =>
+                this.handleEditorMessage(msg, panel, uri, key),
             null,
             panelDisposables
+        )
+    }
+
+    private async handleEditorMessage(
+        msg: EditorToHost,
+        panel: vscode.WebviewPanel,
+        uri: vscode.Uri,
+        key: string
+    ): Promise<void> {
+        if (msg.type === 'ready') {
+            try {
+                await this.sendInit(panel, uri)
+            } catch (err) {
+                vscode.window.showErrorMessage(
+                    `MergePro: Failed to load merge data — ${String(err)}`
+                )
+            }
+            return
+        }
+        if (msg.type === 'saveFile') {
+            await this.handleSaveFile(msg.content, uri, key)
+            return
+        }
+        this.applySessionMutation(msg, uri)
+        this.dirty.set(key, true)
+        this.sendChunkUpdate(panel, uri)
+    }
+
+    private applySessionMutation(msg: EditorToHost, uri: vscode.Uri): void {
+        switch (msg.type) {
+            case 'chunkDecision':
+                this.session.setChunkDecision(
+                    uri,
+                    msg.chunkIndex,
+                    msg.side,
+                    msg.decision
+                )
+                break
+            case 'chunkResolvedManual':
+                this.session.setChunkManual(uri, msg.chunkIndex, msg.lines)
+                break
+            case 'autoResolve':
+                this.session.autoResolveNonConflicting(uri)
+                break
+            case 'magicResolve':
+                this.session.magicResolve(uri)
+                break
+            case 'magicResolveChunk':
+                this.session.magicResolveChunk(uri, msg.chunkIndex)
+                break
+            case 'undo':
+                this.session.undo(uri)
+                break
+            case 'redo':
+                this.session.redo(uri)
+                break
+        }
+    }
+
+    private async handleSaveFile(
+        content: string,
+        uri: vscode.Uri,
+        key: string
+    ): Promise<void> {
+        try {
+            const markerMatches = content.match(/^<{7}[ \t]/gm) ?? []
+            const hasUnresolved = markerMatches.length > 0
+            if (
+                hasUnresolved &&
+                !(await this.confirmSaveUnresolved(uri, markerMatches.length))
+            ) {
+                return
+            }
+            const bytes = Buffer.from(content, 'utf8')
+            await vscode.workspace.fs.writeFile(uri, bytes)
+            this.dirty.set(key, false)
+            if (!hasUnresolved) {
+                await this.stageResolvedFile(uri)
+            }
+        } catch (err) {
+            vscode.window.showErrorMessage(
+                `MergePro: Failed to save — ${String(err)}`
+            )
+        }
+    }
+
+    private async confirmSaveUnresolved(
+        uri: vscode.Uri,
+        n: number
+    ): Promise<boolean> {
+        const fileName = vscode.workspace.asRelativePath(uri)
+        const choice = await vscode.window.showWarningMessage(
+            `${fileName} still has ${n} unresolved conflict${n === 1 ? '' : 's'}.`,
+            {
+                modal: true,
+                detail: 'Saving now will write the conflict markers to disk and the file will NOT be staged. Resolve all conflicts before saving.',
+            },
+            'Save Anyway'
+        )
+        return choice === 'Save Anyway'
+    }
+
+    private async stageResolvedFile(uri: vscode.Uri): Promise<void> {
+        // Stage the file so VS Code's Source Control panel moves it out of
+        // "Merge Changes" — equivalent to `git add <path>`. Only called once
+        // the file is marker-free; staging a half-resolved file would be wrong.
+        try {
+            await this.git.stageFile(uri)
+        } catch (stageErr) {
+            vscode.window.showWarningMessage(
+                `MergePro: Saved, but failed to stage — ${String(stageErr)}`
+            )
+        }
+        vscode.window.showInformationMessage(
+            `MergePro: Resolved ${vscode.workspace.asRelativePath(uri)}`
         )
     }
 

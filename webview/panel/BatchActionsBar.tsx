@@ -10,7 +10,7 @@ export function BatchActionsBar({
     activeUri,
     onBatchAccept,
     onAutoResolve,
-}: Props) {
+}: Readonly<Props>) {
     if (!activeUri) return null
     const btn: CSSProperties = {
         flex: 1,
