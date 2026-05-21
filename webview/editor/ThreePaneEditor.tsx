@@ -84,14 +84,14 @@ if (typeof document !== 'undefined') {
     }
 }
 
-function emptyRangeVariant(chunk: ConflictChunk): string {
+export function emptyRangeVariant(chunk: ConflictChunk): string {
     if (chunk.type !== 'conflict') return 'nonconflict'
     const anyDecision =
         chunk.oursDecision !== undefined || chunk.theirsDecision !== undefined
     return anyDecision ? 'partial' : 'conflict'
 }
 
-function emptyRangeDecoration(
+export function emptyRangeDecoration(
     chunk: ConflictChunk,
     range: LineRange
 ): monaco.editor.IModelDeltaDecoration {
@@ -114,21 +114,27 @@ function emptyRangeDecoration(
     }
 }
 
-function classForOurs(chunk: ConflictChunk, isResolved: boolean): string {
+export function classForOurs(
+    chunk: ConflictChunk,
+    isResolved: boolean
+): string {
     if (isResolved) return 'merge-ours-resolved'
     return chunk.type === 'conflict'
         ? 'merge-ours-conflict'
         : 'merge-ours-nonconflicting'
 }
 
-function classForTheirs(chunk: ConflictChunk, isResolved: boolean): string {
+export function classForTheirs(
+    chunk: ConflictChunk,
+    isResolved: boolean
+): string {
     if (isResolved) return 'merge-theirs-resolved'
     return chunk.type === 'conflict'
         ? 'merge-theirs-conflict'
         : 'merge-theirs-nonconflicting'
 }
 
-function classNameFor(
+export function classNameFor(
     pane: Pane,
     chunk: ConflictChunk,
     isResolved: boolean

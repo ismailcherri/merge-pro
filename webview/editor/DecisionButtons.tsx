@@ -40,46 +40,36 @@ const FILL_RESOLVED = 'rgba(78,201,176,0.18)'
 const FILL_PARTIAL = 'rgba(188,63,60,0.12)'
 const MIN_TIP_HEIGHT = 2
 
-interface ChunkVisual {
+export interface ChunkVisual {
     chunkIndex: number
     isConflict: boolean
     isResolved: boolean
     isPartial: boolean
 }
 
-function fillForVisual(v: ChunkVisual): string {
+export function fillForVisual(v: ChunkVisual): string {
     if (v.isResolved) return FILL_RESOLVED
     if (v.isPartial) return FILL_PARTIAL
     if (v.isConflict) return FILL_CONFLICT
     return FILL_NONCONFLICT
 }
 
-function updateBand(
-    band: SVGRectElement,
-    onScreen: boolean,
-    top: number,
-    bot: number
-): void {
-    if (onScreen) {
-        band.style.display = ''
-        band.setAttribute('y', String(top))
-        band.setAttribute('height', String(Math.max(0, bot - top)))
-    } else {
-        band.style.display = 'none'
-    }
+export function showBand(band: SVGRectElement, top: number, bot: number): void {
+    band.style.display = ''
+    band.setAttribute('y', String(top))
+    band.setAttribute('height', String(Math.max(0, bot - top)))
 }
 
-function updateButtons(
+export function hideBand(band: SVGRectElement): void {
+    band.style.display = 'none'
+}
+
+export function showButtons(
     grp: SVGGElement,
-    onScreen: boolean,
     top: number,
     bot: number,
     width: number
 ): void {
-    if (!onScreen) {
-        grp.style.display = 'none'
-        return
-    }
     grp.style.display = ''
     const groupW = BTN_W * 2 + BTN_GAP
     const btnX = (width - groupW) / 2
@@ -88,6 +78,10 @@ function updateButtons(
     // for very short ranges (e.g. zero-line insertions).
     const btnY = Math.min(top + BTN_TOP_PAD, Math.max(top, bot - BTN_H))
     grp.setAttribute('transform', `translate(${btnX}, ${btnY})`)
+}
+
+export function hideButtons(grp: SVGGElement): void {
+    grp.style.display = 'none'
 }
 
 export function DecisionButtons({
@@ -146,8 +140,14 @@ export function DecisionButtons({
                 }
 
                 const onScreen = bot >= 0 && top <= height
-                if (band) updateBand(band, onScreen, top, bot)
-                if (grp) updateButtons(grp, onScreen, top, bot, width)
+                if (band) {
+                    if (onScreen) showBand(band, top, bot)
+                    else hideBand(band)
+                }
+                if (grp) {
+                    if (onScreen) showButtons(grp, top, bot, width)
+                    else hideButtons(grp)
+                }
             }
         }
 
