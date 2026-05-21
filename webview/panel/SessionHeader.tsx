@@ -3,7 +3,7 @@ interface Props {
     resolved: number
 }
 
-export function SessionHeader({ total, resolved }: Props) {
+export function SessionHeader({ total, resolved }: Readonly<Props>) {
     const pct = total === 0 ? 0 : Math.round((resolved / total) * 100)
     const allDone = resolved === total && total > 0
 

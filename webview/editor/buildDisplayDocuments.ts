@@ -1,8 +1,8 @@
 import { resolvedChunkLines, type ConflictChunk } from '../../src/protocol'
 
 function splitLines(text: string): string[] {
-    const lines = text.replace(/\r\n/g, '\n').split('\n')
-    if (lines[lines.length - 1] === '') lines.pop()
+    const lines = text.replaceAll('\r\n', '\n').split('\n')
+    if (lines.at(-1) === '') lines.pop()
     return lines
 }
 

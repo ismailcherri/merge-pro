@@ -25,7 +25,7 @@ export function MagicWandColumn({
     width,
     height,
     onMagicChunk,
-}: Props) {
+}: Readonly<Props>) {
     const groupRefs = useRef<(SVGGElement | null)[]>([])
     const rafRef = useRef<number | null>(null)
 
@@ -114,11 +114,14 @@ export function MagicWandColumn({
                     position: 'relative',
                 }}
             >
-                {chunks.map((_, i) => {
+                {chunks.map((c, i) => {
                     if (!mergeable.has(i)) return null
+                    // Chunks in a parse don't reorder; the base range + side
+                    // lengths uniquely identify each one for React's key.
+                    const k = `wand-${c.baseStartLine}-${c.baseEndLine}-${c.oursLines.length}-${c.theirsLines.length}`
                     return (
                         <g
-                            key={`wand-${i}`}
+                            key={k}
                             ref={(el) => {
                                 groupRefs.current[i] = el
                             }}

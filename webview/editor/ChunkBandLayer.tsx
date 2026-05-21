@@ -35,7 +35,7 @@ export function ChunkBandLayer({
     pane,
     width,
     height,
-}: Props) {
+}: Readonly<Props>) {
     const bandRefs = useRef<(SVGRectElement | null)[]>([])
     const rafRef = useRef<number | null>(null)
 

@@ -29,7 +29,7 @@ export function LineNumberStrip({
     chunks,
     chunkMaps,
     pane,
-}: Props) {
+}: Readonly<Props>) {
     const rootRef = useRef<HTMLDivElement>(null)
     const rafRef = useRef<number | null>(null)
     const [tick, setTick] = useState(0)
@@ -37,12 +37,13 @@ export function LineNumberStrip({
     useEffect(() => {
         if (!editor) return
 
+        const onFrame = () => {
+            rafRef.current = null
+            setTick((t) => (t + 1) & 0xffff)
+        }
         const schedule = () => {
             if (rafRef.current != null) return
-            rafRef.current = requestAnimationFrame(() => {
-                rafRef.current = null
-                setTick((t) => (t + 1) & 0xffff)
-            })
+            rafRef.current = requestAnimationFrame(onFrame)
         }
 
         schedule()

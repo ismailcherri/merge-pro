@@ -54,4 +54,6 @@ export function activate(context: vscode.ExtensionContext): void {
     )
 }
 
-export function deactivate(): void {}
+export function deactivate(): void {
+    // No-op: subscriptions registered on context handle their own cleanup.
+}

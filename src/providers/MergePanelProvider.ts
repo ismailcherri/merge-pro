@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto'
+import { randomBytes } from 'node:crypto'
 import * as vscode from 'vscode'
 import type { HostToPanel, PanelToHost, WebviewSessionState } from '../protocol'
 import type { MergeSessionManager } from '../services/MergeSessionManager'

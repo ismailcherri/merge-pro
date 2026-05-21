@@ -29,24 +29,29 @@ function linesEqual(a: string[], b: string[]): boolean {
  * means "replace a[baseStart..baseEnd) with newLines". Adjacent edits are
  * coalesced into one hunk; matching runs between edits are not emitted.
  */
-function diffHunks(a: string[], b: string[]): Hunk[] {
+function buildLcsTable(a: string[], b: string[]): number[][] {
     const m = a.length
     const n = b.length
-    // LCS length table.
     const c: number[][] = Array.from({ length: m + 1 }, () =>
         new Array<number>(n + 1).fill(0)
     )
     for (let i = 1; i <= m; i++) {
         for (let j = 1; j <= n; j++) {
             if (a[i - 1] === b[j - 1]) c[i][j] = c[i - 1][j - 1] + 1
-            else
-                c[i][j] = c[i - 1][j] >= c[i][j - 1] ? c[i - 1][j] : c[i][j - 1]
+            else c[i][j] = Math.max(c[i - 1][j], c[i][j - 1])
         }
     }
-    // Backtrack to recover matched index pairs.
+    return c
+}
+
+function backtrackMatches(
+    a: string[],
+    b: string[],
+    c: number[][]
+): Array<[number, number]> {
     const matches: Array<[number, number]> = []
-    let i = m
-    let j = n
+    let i = a.length
+    let j = b.length
     while (i > 0 && j > 0) {
         if (a[i - 1] === b[j - 1]) {
             matches.push([i - 1, j - 1])
@@ -59,8 +64,12 @@ function diffHunks(a: string[], b: string[]): Hunk[] {
         }
     }
     matches.reverse()
+    return matches
+}
 
-    // Build hunks for the gaps between matches.
+function diffHunks(a: string[], b: string[]): Hunk[] {
+    const c = buildLcsTable(a, b)
+    const matches = backtrackMatches(a, b, c)
     const hunks: Hunk[] = []
     let ai = 0
     let bi = 0
@@ -75,8 +84,8 @@ function diffHunks(a: string[], b: string[]): Hunk[] {
         ai = ma + 1
         bi = mb + 1
     }
-    if (ai < m || bi < n) {
-        hunks.push({ baseStart: ai, baseEnd: m, newLines: b.slice(bi) })
+    if (ai < a.length || bi < b.length) {
+        hunks.push({ baseStart: ai, baseEnd: a.length, newLines: b.slice(bi) })
     }
     return hunks
 }
@@ -105,6 +114,38 @@ function hunksConflict(a: TaggedHunk, b: TaggedHunk): boolean {
     return false
 }
 
+function mergeTaggedHunks(all: TaggedHunk[]): TaggedHunk[] | null {
+    const merged: TaggedHunk[] = []
+    for (const h of all) {
+        const last = merged[merged.length - 1]
+        if (last) {
+            // Identical hunk from both sides → take once.
+            if (
+                last.baseStart === h.baseStart &&
+                last.baseEnd === h.baseEnd &&
+                linesEqual(last.newLines, h.newLines)
+            ) {
+                continue
+            }
+            if (hunksConflict(last, h)) return null
+        }
+        merged.push(h)
+    }
+    return merged
+}
+
+function applyHunksToBase(base: string[], merged: TaggedHunk[]): string[] {
+    const result: string[] = []
+    let cursor = 0
+    for (const h of merged) {
+        for (let k = cursor; k < h.baseStart; k++) result.push(base[k])
+        result.push(...h.newLines)
+        cursor = h.baseEnd
+    }
+    for (let k = cursor; k < base.length; k++) result.push(base[k])
+    return result
+}
+
 export function magicMerge(
     base: string[],
     ours: string[],
@@ -130,32 +171,7 @@ export function magicMerge(
         return x.baseEnd - y.baseEnd
     })
 
-    // Walk pairs; merge identical hunks; reject true overlaps.
-    const merged: TaggedHunk[] = []
-    for (const h of all) {
-        const last = merged[merged.length - 1]
-        if (last) {
-            // Identical hunk from both sides → take once.
-            if (
-                last.baseStart === h.baseStart &&
-                last.baseEnd === h.baseEnd &&
-                linesEqual(last.newLines, h.newLines)
-            ) {
-                continue
-            }
-            if (hunksConflict(last, h)) return null
-        }
-        merged.push(h)
-    }
-
-    // Apply merged hunks to base.
-    const result: string[] = []
-    let cursor = 0
-    for (const h of merged) {
-        for (let k = cursor; k < h.baseStart; k++) result.push(base[k])
-        result.push(...h.newLines)
-        cursor = h.baseEnd
-    }
-    for (let k = cursor; k < base.length; k++) result.push(base[k])
-    return result
+    const merged = mergeTaggedHunks(all)
+    if (merged === null) return null
+    return applyHunksToBase(base, merged)
 }

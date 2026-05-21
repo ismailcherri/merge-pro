@@ -1,7 +1,7 @@
-import { execFile } from 'child_process'
-import { existsSync } from 'fs'
-import { join } from 'path'
-import { promisify } from 'util'
+import { execFile } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { promisify } from 'node:util'
 import * as vscode from 'vscode'
 import type { MergeChange } from '../types'
 
