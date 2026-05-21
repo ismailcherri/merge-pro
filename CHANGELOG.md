@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/ismailcherri/merge-pro/compare/v0.2.0...v0.2.1) (2026-05-21)
+
+
+### Bug Fixes
+
+* improve file staging by resolving absolute paths and handling malformed URIs ([8526fd2](https://github.com/ismailcherri/merge-pro/commit/8526fd26c61c7967abe0af6ec8ebe454e673f600))
+* produce plain v&lt;version&gt; tags from release-please ([#5](https://github.com/ismailcherri/merge-pro/issues/5)) ([98a593a](https://github.com/ismailcherri/merge-pro/commit/98a593a4facd9aaf4c32ab476534d87da0964441))
+
 ## [0.2.0](https://github.com/ismailcherri/merge-pro/compare/merge-pro-v0.1.0...merge-pro-v0.2.0) (2026-05-19)
 
 
