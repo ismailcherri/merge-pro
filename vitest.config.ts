@@ -10,7 +10,7 @@ export default defineConfig({
             reporter: ['text', 'lcov'],
             reportsDirectory: 'coverage/node',
             include: ['src/**/*.ts'],
-            exclude: ['src/**/*.d.ts', 'test/**'],
+            exclude: ['src/**/*.d.ts', 'src/types.ts', 'test/**'],
         },
         reporters: ['default', 'vitest-sonar-reporter'],
         outputFile: {
