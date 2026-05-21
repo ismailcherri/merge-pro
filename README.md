@@ -6,6 +6,7 @@
 [![VS Marketplace](https://img.shields.io/badge/VS%20Marketplace-MergePro-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=ismailcherri.merge-pro)
 [![Open VSX](https://img.shields.io/badge/Open%20VSX-MergePro-C160EF?logo=eclipseide&logoColor=white)](https://open-vsx.org/extension/ismailcherri/merge-pro)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=ismailcherri_merge-pro&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ismailcherri_merge-pro)
 
 ## Interface
 
