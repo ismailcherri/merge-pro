@@ -1,7 +1,11 @@
+import { execFile } from 'child_process'
 import { existsSync } from 'fs'
 import { join } from 'path'
+import { promisify } from 'util'
 import * as vscode from 'vscode'
 import type { MergeChange } from '../types'
+
+const execFileAsync = promisify(execFile)
 
 // Type stubs for the vscode.git extension API (not exported publicly)
 interface GitExtensionAPI {
@@ -151,7 +155,24 @@ export class GitService implements vscode.Disposable {
     async stageFile(uri: vscode.Uri): Promise<void> {
         const repo = this.repoFor(uri) ?? this.gitAPI?.repositories[0]
         if (!repo) return
-        await repo.add([uri])
+        // The git extension passes `uri.fsPath` to `git add` as a literal CLI
+        // arg. If `uri` arrived from a non-`file:` scheme or a Uri.parse that
+        // failed to extract the scheme, fsPath can be something like
+        // "file:/Users/..." — git then treats it as a relative path and
+        // reports it as "outside repository". Resolve to an absolute path
+        // before staging.
+        const fsPath = toAbsoluteFsPath(uri)
+        if (!fsPath) {
+            throw new Error(
+                `Could not resolve filesystem path from URI (scheme=${uri.scheme || '<none>'}, path=${uri.path}, fsPath=${uri.fsPath})`
+            )
+        }
+        // Shell out to git directly rather than going through
+        // `repo.add([uri])`. The git extension internally passes `uri.fsPath`
+        // to the CLI, and some Uri shapes round-trip badly through that path.
+        // Going via `git add --` with our own absolute path is bulletproof.
+        const repoRoot = repo.rootUri.fsPath
+        await execFileAsync('git', ['add', '--', fsPath], { cwd: repoRoot })
     }
 
     async getFileContents(uri: vscode.Uri, stage: 1 | 2 | 3): Promise<string> {
@@ -173,4 +194,13 @@ export class GitService implements vscode.Disposable {
             d.dispose()
         })
     }
+}
+
+function toAbsoluteFsPath(uri: vscode.Uri): string | undefined {
+    for (const c of [uri.fsPath, uri.path]) {
+        if (!c) continue
+        const stripped = c.replace(/^file:(\/\/)?/, '')
+        if (stripped.startsWith('/')) return stripped
+    }
+    return undefined
 }
