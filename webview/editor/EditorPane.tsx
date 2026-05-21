@@ -11,7 +11,6 @@ interface Props {
     readOnly: boolean
     decorations: monaco.editor.IModelDeltaDecoration[]
     showScrollbar?: boolean
-    onScroll?: (scrollTop: number) => void
     onDidScrollChange?: (e: monaco.IScrollEvent) => void
     onMount?: () => void
 }

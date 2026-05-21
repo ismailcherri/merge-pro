@@ -8,7 +8,7 @@ interface Props {
     activeUri: string | undefined
 }
 
-export function FileList({ files, onResolve, activeUri }: Props) {
+export function FileList({ files, onResolve, activeUri }: Readonly<Props>) {
     const conflicts = files.filter((f) => f.resolvedChunks < f.totalChunks)
     const resolved = files.filter(
         (f) => f.resolvedChunks >= f.totalChunks && f.totalChunks > 0

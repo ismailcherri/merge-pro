@@ -35,8 +35,8 @@ export interface ComputeInput {
 }
 
 function splitLines(text: string): string[] {
-    const lines = text.replace(/\r\n/g, '\n').split('\n')
-    if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
+    const lines = text.replaceAll('\r\n', '\n').split('\n')
+    if (lines.length > 0 && lines.at(-1) === '') lines.pop()
     return lines
 }
 

@@ -8,7 +8,7 @@ import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker&in
 
 // This must run before any monaco-editor import so Monaco picks up the
 // environment when it lazily creates workers for the first model.
-window.MonacoEnvironment = {
+globalThis.MonacoEnvironment = {
     getWorker(_moduleId: string, label: string): Worker {
         if (label === 'json') return new JsonWorker()
         return new EditorWorker()

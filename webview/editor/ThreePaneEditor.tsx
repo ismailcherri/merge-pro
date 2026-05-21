@@ -84,6 +84,60 @@ if (typeof document !== 'undefined') {
     }
 }
 
+function emptyRangeVariant(chunk: ConflictChunk): string {
+    if (chunk.type !== 'conflict') return 'nonconflict'
+    const anyDecision =
+        chunk.oursDecision !== undefined || chunk.theirsDecision !== undefined
+    return anyDecision ? 'partial' : 'conflict'
+}
+
+function emptyRangeDecoration(
+    chunk: ConflictChunk,
+    range: LineRange
+): monaco.editor.IModelDeltaDecoration {
+    const variant = emptyRangeVariant(chunk)
+    if (range.start > 1) {
+        return {
+            range: new monaco.Range(range.start - 1, 1, range.start - 1, 1),
+            options: {
+                isWholeLine: true,
+                className: `merge-empty-${variant}-bottom`,
+            },
+        }
+    }
+    return {
+        range: new monaco.Range(1, 1, 1, 1),
+        options: {
+            isWholeLine: true,
+            className: `merge-empty-${variant}-top`,
+        },
+    }
+}
+
+function classForOurs(chunk: ConflictChunk, isResolved: boolean): string {
+    if (isResolved) return 'merge-ours-resolved'
+    return chunk.type === 'conflict'
+        ? 'merge-ours-conflict'
+        : 'merge-ours-nonconflicting'
+}
+
+function classForTheirs(chunk: ConflictChunk, isResolved: boolean): string {
+    if (isResolved) return 'merge-theirs-resolved'
+    return chunk.type === 'conflict'
+        ? 'merge-theirs-conflict'
+        : 'merge-theirs-nonconflicting'
+}
+
+function classNameFor(
+    pane: Pane,
+    chunk: ConflictChunk,
+    isResolved: boolean
+): string {
+    if (pane === 'ours') return classForOurs(chunk, isResolved)
+    if (pane === 'theirs') return classForTheirs(chunk, isResolved)
+    return isResolved ? 'merge-result-resolved' : 'merge-result-unresolved'
+}
+
 function buildPaneDecorations(
     chunks: ConflictChunk[],
     chunkMaps: ChunkLineMap[],
@@ -103,62 +157,16 @@ function buildPaneDecorations(
             // the two surrounding lines, colored to match the gutter
             // connector for this chunk type.
             if (isResolved) continue
-            const anyDecision =
-                chunk.oursDecision !== undefined ||
-                chunk.theirsDecision !== undefined
-            const variant =
-                chunk.type === 'conflict'
-                    ? anyDecision
-                        ? 'partial'
-                        : 'conflict'
-                    : 'nonconflict'
-            if (range.start > 1) {
-                out.push({
-                    range: new monaco.Range(
-                        range.start - 1,
-                        1,
-                        range.start - 1,
-                        1
-                    ),
-                    options: {
-                        isWholeLine: true,
-                        className: `merge-empty-${variant}-bottom`,
-                    },
-                })
-            } else {
-                out.push({
-                    range: new monaco.Range(1, 1, 1, 1),
-                    options: {
-                        isWholeLine: true,
-                        className: `merge-empty-${variant}-top`,
-                    },
-                })
-            }
+            out.push(emptyRangeDecoration(chunk, range))
             continue
-        }
-
-        let className: string
-        if (pane === 'ours') {
-            className = isResolved
-                ? 'merge-ours-resolved'
-                : chunk.type === 'conflict'
-                  ? 'merge-ours-conflict'
-                  : 'merge-ours-nonconflicting'
-        } else if (pane === 'theirs') {
-            className = isResolved
-                ? 'merge-theirs-resolved'
-                : chunk.type === 'conflict'
-                  ? 'merge-theirs-conflict'
-                  : 'merge-theirs-nonconflicting'
-        } else {
-            className = isResolved
-                ? 'merge-result-resolved'
-                : 'merge-result-unresolved'
         }
 
         out.push({
             range: new monaco.Range(range.start, 1, range.end, 1),
-            options: { isWholeLine: true, className },
+            options: {
+                isWholeLine: true,
+                className: classNameFor(pane, chunk, isResolved),
+            },
         })
     }
     return out
@@ -180,7 +188,7 @@ export function ThreePaneEditor({
     onUndo,
     onRedo,
     onSave,
-}: Props) {
+}: Readonly<Props>) {
     const leftRef = useRef<EditorPaneHandle>(null)
     const centerRef = useRef<EditorPaneHandle>(null)
     const rightRef = useRef<EditorPaneHandle>(null)
@@ -412,8 +420,8 @@ export function ThreePaneEditor({
                 onRedo()
             }
         }
-        window.addEventListener('keydown', onKey)
-        return () => window.removeEventListener('keydown', onKey)
+        globalThis.addEventListener('keydown', onKey)
+        return () => globalThis.removeEventListener('keydown', onKey)
     }, [onUndo, onRedo])
 
     return (
