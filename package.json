@@ -169,7 +169,7 @@
         "@vitest/coverage-v8": "4.1.6",
         "@vscode/test-electron": "2.5.2",
         "@vscode/vsce": "3.9.1",
-        "esbuild": "^0.28.0",
+        "esbuild": "^0.28.1",
         "eslint": "9.39.4",
         "eslint-plugin-react": "7.37.5",
         "eslint-plugin-react-hooks": "7.1.1",
