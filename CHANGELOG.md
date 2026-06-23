@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/ismailcherri/merge-pro/compare/v0.2.1...v0.3.0) (2026-06-23)
+
+
+### Features
+
+* improve ci/cd ([9816d30](https://github.com/ismailcherri/merge-pro/commit/9816d305f2276ae1c7587ea2063b4a52b1581586))
+* update dependencies ([55d880f](https://github.com/ismailcherri/merge-pro/commit/55d880f5396d1025b145737e910c43ac2c4bc662))
+
+
+### Bug Fixes
+
+* vscode version ([8e5b1f0](https://github.com/ismailcherri/merge-pro/commit/8e5b1f0a69c421413e65cc6db0a7a7995d6b7c07))
+
 ## [0.2.1](https://github.com/ismailcherri/merge-pro/compare/v0.2.0...v0.2.1) (2026-05-21)
 
 
