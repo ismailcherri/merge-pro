@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/ismailcherri/merge-pro/compare/v0.3.0...v0.4.0) (2026-08-29)
+
+
+### Features
+
+* update dependencies ([296515a](https://github.com/ismailcherri/merge-pro/commit/296515a1e2a8ce1a118c605316b88cb464b1ae9d))
+* update dependencies ([2a6228a](https://github.com/ismailcherri/merge-pro/commit/2a6228aeac1ab01068c4956fa791c3b6161fae01))
+
 ## [0.3.0](https://github.com/ismailcherri/merge-pro/compare/v0.2.1...v0.3.0) (2026-06-23)
 
 
