@@ -2,11 +2,12 @@ import { runTests } from '@vscode/test-electron'
 import * as path from 'path'
 
 async function main(): Promise<void> {
-    const extensionDevelopmentPath = path.resolve(__dirname, '../../')
+    const projectRoot = path.resolve(__dirname, '../../..')
+    const extensionDevelopmentPath = projectRoot
     const extensionTestsPath = path.resolve(__dirname, './suite/index')
     const workspacePath = path.resolve(
-        __dirname,
-        '../../test-fixtures/conflict-repo/repo'
+        projectRoot,
+        'test-fixtures/conflict-repo/repo'
     )
 
     await runTests({

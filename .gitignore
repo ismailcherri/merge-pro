@@ -7,3 +7,4 @@ test-fixtures/conflict-repo/repo/
 .vscode-test/
 .wolf/
 coverage/
+.firecrawl/
